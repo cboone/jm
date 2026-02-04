@@ -1,0 +1,84 @@
+package cmd
+
+import (
+	"os"
+	"time"
+
+	"github.com/spf13/cobra"
+
+	"github.com/cboone/jm/internal/client"
+)
+
+var searchCmd = &cobra.Command{
+	Use:   "search <query>",
+	Short: "Search emails by text and filters",
+	Long: `Search emails using full-text search and/or structured filters.
+The positional <query> argument searches across subject, from, to, and body.
+Use flags for more specific filtering.`,
+	Args: cobra.MaximumNArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		c, err := newClient()
+		if err != nil {
+			return exitError("authentication_failed", err.Error(),
+				"Check your token in JMAP_TOKEN or config file")
+		}
+
+		opts := client.SearchOptions{}
+
+		if len(args) > 0 {
+			opts.Text = args[0]
+		}
+
+		opts.From, _ = cmd.Flags().GetString("from")
+		opts.To, _ = cmd.Flags().GetString("to")
+		opts.Subject, _ = cmd.Flags().GetString("subject")
+		opts.HasAttachment, _ = cmd.Flags().GetBool("has-attachment")
+		opts.Limit, _ = cmd.Flags().GetUint64("limit")
+
+		mailboxName, _ := cmd.Flags().GetString("mailbox")
+		if mailboxName != "" {
+			mailboxID, err := c.ResolveMailboxID(mailboxName)
+			if err != nil {
+				return exitError("not_found", err.Error(), "")
+			}
+			opts.MailboxID = string(mailboxID)
+		}
+
+		if beforeStr, _ := cmd.Flags().GetString("before"); beforeStr != "" {
+			t, err := time.Parse(time.RFC3339, beforeStr)
+			if err != nil {
+				return exitError("general_error", "invalid --before date: "+err.Error(),
+					"Use RFC 3339 format, e.g. 2026-01-15T00:00:00Z")
+			}
+			opts.Before = &t
+		}
+
+		if afterStr, _ := cmd.Flags().GetString("after"); afterStr != "" {
+			t, err := time.Parse(time.RFC3339, afterStr)
+			if err != nil {
+				return exitError("general_error", "invalid --after date: "+err.Error(),
+					"Use RFC 3339 format, e.g. 2026-01-15T00:00:00Z")
+			}
+			opts.After = &t
+		}
+
+		result, err := c.SearchEmails(opts)
+		if err != nil {
+			return exitError("jmap_error", err.Error(), "")
+		}
+
+		return formatter().Format(os.Stdout, result)
+	},
+}
+
+func init() {
+	searchCmd.Flags().StringP("mailbox", "m", "", "restrict search to a specific mailbox")
+	searchCmd.Flags().Uint64P("limit", "l", 25, "maximum results")
+	searchCmd.Flags().String("from", "", "filter by sender address/name")
+	searchCmd.Flags().String("to", "", "filter by recipient address/name")
+	searchCmd.Flags().String("subject", "", "filter by subject text")
+	searchCmd.Flags().String("before", "", "emails received before this date (RFC 3339)")
+	searchCmd.Flags().String("after", "", "emails received after this date (RFC 3339)")
+	searchCmd.Flags().Bool("has-attachment", false, "only emails with attachments")
+	rootCmd.AddCommand(searchCmd)
+}
