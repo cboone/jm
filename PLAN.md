@@ -1,8 +1,8 @@
-# simple-jmap-cli: Implementation Plan
+# jm: Implementation Plan
 
-A CLI tool written in Go (Cobra + Viper) that provides a limited, safe interface to
-a JMAP mail server (Fastmail). Designed to be used by Claude Code on the command line
-to read, search, and triage email.
+`jm` ("JMAP Mail") -- a CLI tool written in Go (Cobra + Viper) that provides a
+limited, safe interface to a JMAP mail server (Fastmail). Designed to be used by
+Claude Code on the command line to read, search, and triage email.
 
 ## Design Principles
 
@@ -61,12 +61,12 @@ No other scopes are needed (specifically not `urn:ietf:params:jmap:submission`).
 
 1. **Command-line flags** (`--token`, `--format`, etc.)
 2. **Environment variables** (`JMAP_TOKEN`, `JMAP_SESSION_URL`, `JMAP_FORMAT`)
-3. **Config file** at `~/.config/simple-jmap-cli/config.yaml`
+3. **Config file** at `~/.config/jm/config.yaml`
 
 ### Config File Schema
 
 ```yaml
-# ~/.config/simple-jmap-cli/config.yaml
+# ~/.config/jm/config.yaml
 session_url: "https://api.fastmail.com/jmap/session"  # default
 token: "fmu1-..."  # Fastmail API token (or use JMAP_TOKEN env var)
 format: "json"     # json | text (default: json)
@@ -90,11 +90,11 @@ All environment variables are prefixed with `JMAP_`:
 | `--session-url` | `JMAP_SESSION_URL` | `https://api.fastmail.com/jmap/session` | JMAP session endpoint |
 | `--format` | `JMAP_FORMAT` | `json` | Output format: `json` or `text` |
 | `--account-id` | `JMAP_ACCOUNT_ID` | (auto) | JMAP account ID override |
-| `--config` | -- | `~/.config/simple-jmap-cli/config.yaml` | Config file path |
+| `--config` | -- | `~/.config/jm/config.yaml` | Config file path |
 
 ---
 
-### `jmap session`
+### `jm session`
 
 Fetch and display the JMAP session resource. Useful for verifying connectivity,
 checking capabilities, and discovering account IDs.
@@ -117,7 +117,7 @@ checking capabilities, and discovering account IDs.
 
 ---
 
-### `jmap mailboxes`
+### `jm mailboxes`
 
 List all mailboxes (folders/labels) in the account.
 
@@ -153,7 +153,7 @@ List all mailboxes (folders/labels) in the account.
 
 ---
 
-### `jmap list`
+### `jm list`
 
 List emails in a mailbox. Returns a summary of each email (not full body).
 
@@ -198,7 +198,7 @@ List emails in a mailbox. Returns a summary of each email (not full body).
 
 ---
 
-### `jmap read <email-id>`
+### `jm read <email-id>`
 
 Read the full content of a specific email by ID.
 
@@ -208,8 +208,12 @@ Read the full content of a specific email by ID.
 |---|---|---|
 | `--raw-headers` | `false` | Include all raw headers |
 | `--html` | `false` | Prefer HTML body (default: plain text) |
+| `--thread` | `false` | Show all emails in the same thread (conversation view) |
 
-**JMAP calls:** `Email/get` with `bodyProperties` and `fetchTextBodyValues` / `fetchHTMLBodyValues`
+**JMAP calls:** `Email/get` with `bodyProperties` and `fetchTextBodyValues` / `fetchHTMLBodyValues`.
+When `--thread` is used, additionally fetches all emails sharing the same `threadId`,
+sorted by `receivedAt`. Thread emails show truncated bodies (preview only); the
+target email is shown in full.
 
 **Email/get properties:** `id`, `threadId`, `mailboxIds`, `from`, `to`, `cc`, `bcc`,
 `replyTo`, `subject`, `sentAt`, `receivedAt`, `size`, `keywords`, `headers` (if --raw-headers),
@@ -244,7 +248,7 @@ out of scope for this tool.
 
 ---
 
-### `jmap search <query>`
+### `jm search <query>`
 
 Full-text search across emails. Uses JMAP's `text` filter which matches against
 subject, from, to, and body content.
@@ -267,12 +271,12 @@ subject, from, to, and body content.
 **Email/query filter:** Combines `text`, `from`, `to`, `subject`, `before`, `after`,
 `hasAttachment`, `inMailbox` as an AND filter.
 
-**Output:** Same shape as `jmap list` output, with an additional `snippet` field when
+**Output:** Same shape as `jm list` output, with an additional `snippet` field when
 text search is used (highlighted matching text from `SearchSnippet/get`).
 
 ---
 
-### `jmap archive <email-id> [email-id...]`
+### `jm archive <email-id> [email-id...]`
 
 Move one or more emails to the Archive mailbox.
 
@@ -290,7 +294,7 @@ Move one or more emails to the Archive mailbox.
 
 ---
 
-### `jmap spam <email-id> [email-id...]`
+### `jm spam <email-id> [email-id...]`
 
 Move one or more emails to the Junk/Spam mailbox.
 
@@ -309,7 +313,7 @@ Move one or more emails to the Junk/Spam mailbox.
 
 ---
 
-### `jmap move <email-id> [email-id...] --to <mailbox>`
+### `jm move <email-id> [email-id...] --to <mailbox>`
 
 Move one or more emails to a specified mailbox (by name or ID).
 
@@ -342,20 +346,20 @@ error explaining that deletion is not permitted.
 ## Project Structure
 
 ```
-simple-jmap-cli/
+jm/
 ├── main.go                          # Entry point: calls cmd.Execute()
 ├── go.mod
 ├── go.sum
 ├── cmd/
 │   ├── root.go                      # Root command, global persistent flags, Viper init
-│   ├── session.go                   # jmap session
-│   ├── mailboxes.go                 # jmap mailboxes
-│   ├── list.go                      # jmap list
-│   ├── read.go                      # jmap read
-│   ├── search.go                    # jmap search
-│   ├── archive.go                   # jmap archive
-│   ├── spam.go                      # jmap spam
-│   └── move.go                      # jmap move
+│   ├── session.go                   # jm session
+│   ├── mailboxes.go                 # jm mailboxes
+│   ├── list.go                      # jm list
+│   ├── read.go                      # jm read
+│   ├── search.go                    # jm search
+│   ├── archive.go                   # jm archive
+│   ├── spam.go                      # jm spam
+│   └── move.go                      # jm move
 ├── internal/
 │   ├── client/
 │   │   ├── client.go                # JMAP client wrapper (session init, Do())
@@ -446,13 +450,13 @@ Exit codes:
 ## Build & Install
 
 ```bash
-go build -o jmap-cli .
+go build -o jm .
 # or
 go install .
 ```
 
-The binary name will be `jmap-cli` (derived from the module name, but overridable
-via `-o` flag or goreleaser config).
+The binary name is `jm`. The Go module will be named to produce this binary by
+default (e.g., `github.com/cboone/jm`), or overridden via `-o jm` / goreleaser.
 
 ---
 
@@ -473,32 +477,39 @@ Suggested sequence for building this out:
 
 1. **Project scaffolding** -- `go mod init`, install dependencies, create directory
    structure, `main.go`, `cmd/root.go` with Viper config loading
-2. **`internal/client/client.go`** -- JMAP session init, authentication, basic `Do()` wrapper
-3. **`jmap session`** -- verify connectivity end-to-end
-4. **`internal/client/mailbox.go`** + **`jmap mailboxes`** -- mailbox listing and
+2. **`internal/client/client.go`** -- JMAP session init, authentication, basic `Do()` wrapper,
+   HTTP retry logic (429/503 with exponential backoff, max 3 retries)
+3. **`jm session`** -- verify connectivity end-to-end
+4. **`internal/client/mailbox.go`** + **`jm mailboxes`** -- mailbox listing and
    resolution by name/role (needed by most other commands)
-5. **`internal/client/email.go`** + **`jmap list`** -- email query + get
-6. **`jmap read`** -- full email content retrieval
-7. **`jmap search`** -- query with filters and search snippets
+5. **`internal/client/email.go`** + **`jm list`** -- email query + get
+6. **`jm read`** -- full email content retrieval, including `--thread` flag
+7. **`jm search`** -- query with filters and search snippets
 8. **`internal/client/safety.go`** -- safety guardrails
-9. **`jmap archive`** -- move to archive (first write operation, exercises Email/set)
-10. **`jmap spam`** -- move to junk
-11. **`jmap move`** -- general move with safety checks
+9. **`jm archive`** -- move to archive (first write operation, exercises Email/set);
+   `Email/set` wrapper chunks batches at 50 IDs internally
+10. **`jm spam`** -- move to junk
+11. **`jm move`** -- general move with safety checks
 12. **`internal/output/`** -- text formatter (JSON is handled by `encoding/json`
     throughout, text formatter added last)
 13. **Tests and polish**
 
 ---
 
-## Open Questions
+## Resolved Decisions
 
-- **Session caching:** Should the session response be cached to disk to avoid an
-  extra HTTP round-trip on every invocation? The JMAP spec supports this via the
-  session `state` field. Could store in `~/.cache/simple-jmap-cli/session.json`.
-- **Thread view:** Should `jmap read` optionally show the full thread (all emails
-  in the thread)? Or is a separate `jmap thread <thread-id>` command warranted?
-- **Batch size limits:** Fastmail may have limits on how many IDs can be passed to
-  a single `Email/set` call. Need to test and potentially chunk large batches.
-- **Rate limiting:** Should the client handle HTTP 429 responses with automatic retry?
-- **Binary name:** `jmap-cli`, `jmap`, or `simple-jmap-cli`? The shorter `jmap` is
-  convenient but might conflict with other tools.
+- **Binary name:** `jm` ("JMAP Mail"). Two characters, fast to type, no conflict
+  with standard Unix tools. Module path: `github.com/cboone/jm`.
+- **Session caching:** Skip for v1. The ~100-300ms overhead of a session GET per
+  invocation is negligible relative to LLM API call latency. The JMAP spec's
+  `state` field makes it straightforward to add disk caching later
+  (`~/.cache/jm/session.json`) if needed.
+- **Thread view:** `--thread` flag on `jm read`, not a separate command. Shows all
+  emails in the thread sorted by `receivedAt`; thread emails get truncated bodies
+  (preview only), target email shown in full.
+- **Batch size limits:** Internal constant of 50 IDs per `Email/set` call. If more
+  IDs are passed, the client silently chunks into multiple requests. No user-facing
+  configuration.
+- **Rate limiting:** Yes. Simple retry on HTTP 429 and 503: read `Retry-After`
+  header if present, otherwise exponential backoff (1s, 2s, 4s), max 3 retries.
+  Implemented in the HTTP client wrapper.
