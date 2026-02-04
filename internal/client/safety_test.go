@@ -6,67 +6,75 @@ import (
 	"git.sr.ht/~rockorager/go-jmap/mail/mailbox"
 )
 
-func TestValidateTargetMailbox_AllowsArchive(t *testing.T) {
-	mb := &mailbox.Mailbox{Name: "Archive", Role: mailbox.RoleArchive}
-	if err := ValidateTargetMailbox(mb); err != nil {
-		t.Errorf("expected archive to be allowed, got: %v", err)
+func TestValidateTargetMailbox_AllowedMailboxes(t *testing.T) {
+	allowed := []struct {
+		name string
+		mb   *mailbox.Mailbox
+	}{
+		{"archive role", &mailbox.Mailbox{Name: "Archive", Role: mailbox.RoleArchive}},
+		{"inbox role", &mailbox.Mailbox{Name: "Inbox", Role: mailbox.RoleInbox}},
+		{"junk role", &mailbox.Mailbox{Name: "Junk", Role: mailbox.RoleJunk}},
+		{"sent role", &mailbox.Mailbox{Name: "Sent", Role: mailbox.RoleSent}},
+		{"drafts role", &mailbox.Mailbox{Name: "Drafts", Role: mailbox.RoleDrafts}},
+		{"custom folder", &mailbox.Mailbox{Name: "Receipts", Role: ""}},
+		{"custom folder with spaces", &mailbox.Mailbox{Name: "My Important Emails", Role: ""}},
+		{"folder named Trashcan", &mailbox.Mailbox{Name: "Trashcan", Role: ""}},
+		{"folder named Deleted", &mailbox.Mailbox{Name: "Deleted", Role: ""}},
+		{"folder named Trash Bin", &mailbox.Mailbox{Name: "Trash Bin", Role: ""}},
+	}
+
+	for _, tc := range allowed {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := ValidateTargetMailbox(tc.mb); err != nil {
+				t.Errorf("expected %q to be allowed, got: %v", tc.mb.Name, err)
+			}
+		})
 	}
 }
 
-func TestValidateTargetMailbox_AllowsInbox(t *testing.T) {
-	mb := &mailbox.Mailbox{Name: "Inbox", Role: mailbox.RoleInbox}
-	if err := ValidateTargetMailbox(mb); err != nil {
-		t.Errorf("expected inbox to be allowed, got: %v", err)
+func TestValidateTargetMailbox_BlockedMailboxes(t *testing.T) {
+	blocked := []struct {
+		name string
+		mb   *mailbox.Mailbox
+	}{
+		{"trash role", &mailbox.Mailbox{Name: "Trash", Role: mailbox.RoleTrash}},
+		{"trash role custom name", &mailbox.Mailbox{Name: "My Trash", Role: mailbox.RoleTrash}},
+		{"trash name no role", &mailbox.Mailbox{Name: "Trash", Role: ""}},
+		{"TRASH uppercase", &mailbox.Mailbox{Name: "TRASH", Role: ""}},
+		{"Trash mixed case", &mailbox.Mailbox{Name: "tRaSh", Role: ""}},
+		{"deleted items", &mailbox.Mailbox{Name: "Deleted Items", Role: ""}},
+		{"DELETED ITEMS uppercase", &mailbox.Mailbox{Name: "DELETED ITEMS", Role: ""}},
+		{"deleted messages", &mailbox.Mailbox{Name: "Deleted Messages", Role: ""}},
+		{"DELETED MESSAGES uppercase", &mailbox.Mailbox{Name: "DELETED MESSAGES", Role: ""}},
+	}
+
+	for _, tc := range blocked {
+		t.Run(tc.name, func(t *testing.T) {
+			err := ValidateTargetMailbox(tc.mb)
+			if err == nil {
+				t.Fatalf("expected %q to be blocked", tc.mb.Name)
+			}
+			if _, ok := err.(*ErrForbidden); !ok {
+				t.Errorf("expected *ErrForbidden, got %T: %v", err, err)
+			}
+		})
 	}
 }
 
-func TestValidateTargetMailbox_AllowsCustomFolder(t *testing.T) {
-	mb := &mailbox.Mailbox{Name: "Receipts", Role: ""}
-	if err := ValidateTargetMailbox(mb); err != nil {
-		t.Errorf("expected custom folder to be allowed, got: %v", err)
+func TestErrForbidden_Error(t *testing.T) {
+	err := &ErrForbidden{
+		Operation: "move",
+		Reason:    "mailbox is trash",
+	}
+	msg := err.Error()
+	if msg != "forbidden operation: move: mailbox is trash" {
+		t.Errorf("unexpected error message: %s", msg)
 	}
 }
 
-func TestValidateTargetMailbox_BlocksTrashRole(t *testing.T) {
-	mb := &mailbox.Mailbox{Name: "Trash", Role: mailbox.RoleTrash}
-	err := ValidateTargetMailbox(mb)
-	if err == nil {
-		t.Fatal("expected trash role to be blocked")
-	}
-	if _, ok := err.(*ErrForbidden); !ok {
-		t.Errorf("expected ErrForbidden, got: %T", err)
-	}
-}
-
-func TestValidateTargetMailbox_BlocksTrashName(t *testing.T) {
-	// Trash name without the role set (edge case).
-	mb := &mailbox.Mailbox{Name: "Trash", Role: ""}
-	err := ValidateTargetMailbox(mb)
-	if err == nil {
-		t.Fatal("expected 'Trash' name to be blocked")
-	}
-}
-
-func TestValidateTargetMailbox_BlocksDeletedItems(t *testing.T) {
-	mb := &mailbox.Mailbox{Name: "Deleted Items", Role: ""}
-	err := ValidateTargetMailbox(mb)
-	if err == nil {
-		t.Fatal("expected 'Deleted Items' to be blocked")
-	}
-}
-
-func TestValidateTargetMailbox_BlocksDeletedMessages(t *testing.T) {
-	mb := &mailbox.Mailbox{Name: "Deleted Messages", Role: ""}
-	err := ValidateTargetMailbox(mb)
-	if err == nil {
-		t.Fatal("expected 'Deleted Messages' to be blocked")
-	}
-}
-
-func TestValidateTargetMailbox_CaseInsensitive(t *testing.T) {
-	mb := &mailbox.Mailbox{Name: "TRASH", Role: ""}
-	err := ValidateTargetMailbox(mb)
-	if err == nil {
-		t.Fatal("expected case-insensitive 'TRASH' to be blocked")
+func TestErrForbidden_ImplementsError(t *testing.T) {
+	var err error = &ErrForbidden{Operation: "test", Reason: "test"}
+	if err.Error() == "" {
+		t.Error("expected non-empty error message")
 	}
 }

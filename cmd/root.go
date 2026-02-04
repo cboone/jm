@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,6 +12,9 @@ import (
 	"github.com/cboone/jm/internal/client"
 	"github.com/cboone/jm/internal/output"
 )
+
+// ErrSilent is returned by exitError to indicate the error has already been printed.
+var ErrSilent = errors.New("error already printed")
 
 var (
 	cfgFile string
@@ -87,8 +91,9 @@ func formatter() output.Formatter {
 	return output.New(viper.GetString("format"))
 }
 
-// exitError writes a structured error to stderr and returns an error for the exit code.
+// exitError writes a structured error to stderr and returns ErrSilent
+// to signal that the error has already been printed.
 func exitError(code string, message string, hint string) error {
 	formatter().FormatError(os.Stderr, code, message, hint)
-	return fmt.Errorf("%s", message)
+	return ErrSilent
 }
