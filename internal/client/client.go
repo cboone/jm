@@ -100,7 +100,15 @@ func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	var err error
 
 	for attempt := 0; attempt <= maxRetries; attempt++ {
-		resp, err = t.base.RoundTrip(req)
+		attemptReq := req
+		if attempt > 0 {
+			attemptReq, err = cloneRequestForRetry(req)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		resp, err = t.base.RoundTrip(attemptReq)
 		if err != nil {
 			return nil, err
 		}
@@ -118,6 +126,22 @@ func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	return resp, err
+}
+
+func cloneRequestForRetry(req *http.Request) (*http.Request, error) {
+	clone := req.Clone(req.Context())
+	if req.Body == nil {
+		return clone, nil
+	}
+	if req.GetBody == nil {
+		return nil, fmt.Errorf("cannot retry request with non-rewindable body")
+	}
+	body, err := req.GetBody()
+	if err != nil {
+		return nil, fmt.Errorf("failed to clone request body for retry: %w", err)
+	}
+	clone.Body = body
+	return clone, nil
 }
 
 func retryDelay(resp *http.Response, attempt int) time.Duration {
