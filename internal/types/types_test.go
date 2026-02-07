@@ -109,7 +109,10 @@ func TestEmailSummary_JSON_WithSnippet(t *testing.T) {
 		Snippet: "matching text",
 	}
 
-	data, _ := json.Marshal(s)
+	data, err := json.Marshal(s)
+	if err != nil {
+		t.Fatal(err)
+	}
 	var result map[string]interface{}
 	if err := json.Unmarshal(data, &result); err != nil {
 		t.Fatal(err)
@@ -167,7 +170,10 @@ func TestEmailDetail_JSON_NullSentAt(t *testing.T) {
 		Attachments: []Attachment{},
 	}
 
-	data, _ := json.Marshal(detail)
+	data, err := json.Marshal(detail)
+	if err != nil {
+		t.Fatal(err)
+	}
 	var result map[string]interface{}
 	if err := json.Unmarshal(data, &result); err != nil {
 		t.Fatal(err)
@@ -222,7 +228,10 @@ func TestMoveResult_JSON_Spam(t *testing.T) {
 		Errors:     []string{},
 	}
 
-	data, _ := json.Marshal(r)
+	data, err := json.Marshal(r)
+	if err != nil {
+		t.Fatal(err)
+	}
 	var result map[string]interface{}
 	if err := json.Unmarshal(data, &result); err != nil {
 		t.Fatal(err)
@@ -243,7 +252,10 @@ func TestMoveResult_JSON_WithErrors(t *testing.T) {
 		Errors: []string{"M2: not found"},
 	}
 
-	data, _ := json.Marshal(r)
+	data, err := json.Marshal(r)
+	if err != nil {
+		t.Fatal(err)
+	}
 	var result map[string]interface{}
 	if err := json.Unmarshal(data, &result); err != nil {
 		t.Fatal(err)
@@ -293,7 +305,10 @@ func TestAppError_JSON_EmptyHint(t *testing.T) {
 		Hint:    "",
 	}
 
-	data, _ := json.Marshal(e)
+	data, err := json.Marshal(e)
+	if err != nil {
+		t.Fatal(err)
+	}
 	var result map[string]interface{}
 	if err := json.Unmarshal(data, &result); err != nil {
 		t.Fatal(err)
@@ -359,7 +374,10 @@ func TestThreadView_JSON(t *testing.T) {
 
 func TestAddress_JSON(t *testing.T) {
 	a := Address{Name: "Alice", Email: "alice@test.com"}
-	data, _ := json.Marshal(a)
+	data, err := json.Marshal(a)
+	if err != nil {
+		t.Fatal(err)
+	}
 	var result map[string]interface{}
 	if err := json.Unmarshal(data, &result); err != nil {
 		t.Fatal(err)
@@ -380,7 +398,10 @@ func TestEmailListResult_JSON(t *testing.T) {
 		Emails: []EmailSummary{},
 	}
 
-	data, _ := json.Marshal(r)
+	data, err := json.Marshal(r)
+	if err != nil {
+		t.Fatal(err)
+	}
 	var result map[string]interface{}
 	if err := json.Unmarshal(data, &result); err != nil {
 		t.Fatal(err)

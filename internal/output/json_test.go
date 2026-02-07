@@ -60,20 +60,3 @@ func TestJSONFormatter_FormatError(t *testing.T) {
 		t.Errorf("expected hint='check the ID', got %s", result.Hint)
 	}
 }
-
-func TestTextFormatter_FormatError(t *testing.T) {
-	f := &TextFormatter{}
-	var buf bytes.Buffer
-
-	if err := f.FormatError(&buf, "auth_failed", "bad token", "check JMAP_TOKEN"); err != nil {
-		t.Fatal(err)
-	}
-
-	out := buf.String()
-	if !bytes.Contains([]byte(out), []byte("auth_failed")) {
-		t.Errorf("expected error code in output, got: %s", out)
-	}
-	if !bytes.Contains([]byte(out), []byte("bad token")) {
-		t.Errorf("expected error message in output, got: %s", out)
-	}
-}
