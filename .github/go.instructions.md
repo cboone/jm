@@ -10,3 +10,5 @@ applyTo: "**/*.go"
 - **Search query is optional**: `jm search` accepts zero or one positional args. Filter-only search (no query, only flags) is a supported use case.
 - **Deterministic output ordering**: `MoveEmails` and `MarkAsSpam` iterate over the input `batch` slice to build results, preserving caller-provided order. Do not suggest iterating over map keys from `r.Updated`/`r.NotUpdated`.
 - **Read command error codes**: The `read` command distinguishes `not_found` (email missing) from `jmap_error` (network/JMAP failures) using a `readErrorCode` helper. Do not suggest using a single error code for all failures.
+- **ReadEmail fetches both body value types**: `ReadEmail` always sets both `FetchHTMLBodyValues` and `FetchTextBodyValues` to true so that `extractBody` can fall back between HTML and text. Do not suggest conditional fetching based on `preferHTML`.
+- **Format flag is validated early**: The `--format` flag is validated in `PersistentPreRunE` before any command runs. `output.New` intentionally falls back to JSON as a default since validation has already occurred. Do not suggest adding validation inside `output.New`.
