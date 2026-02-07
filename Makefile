@@ -1,6 +1,6 @@
 BINARY := jm
 
-.PHONY: all build test test-cli test-all vet fmt clean help
+.PHONY: all build test test-cli test-all cover vet fmt clean help
 
 all: build ## Build the binary (default)
 
