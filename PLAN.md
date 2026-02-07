@@ -137,16 +137,14 @@ List all mailboxes (folders/labels) in the account.
     "name": "Inbox",
     "role": "inbox",
     "total_emails": 1542,
-    "unread_emails": 12,
-    "parent_id": null
+    "unread_emails": 12
   },
   {
     "id": "mb-archive-id",
     "name": "Archive",
     "role": "archive",
     "total_emails": 48210,
-    "unread_emails": 0,
-    "parent_id": null
+    "unread_emails": 0
   }
 ]
 ```
@@ -289,6 +287,10 @@ Move one or more emails to the Archive mailbox.
 ```json
 {
   "archived": ["M-email-id-1", "M-email-id-2"],
+  "destination": {
+    "id": "M-archive-mailbox-id",
+    "name": "Archive"
+  },
   "errors": []
 }
 ```
@@ -308,6 +310,10 @@ Move one or more emails to the Junk/Spam mailbox.
 ```json
 {
   "marked_as_spam": ["M-email-id-1"],
+  "destination": {
+    "id": "M-junk-mailbox-id",
+    "name": "Junk"
+  },
   "errors": []
 }
 ```

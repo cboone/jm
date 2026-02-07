@@ -388,15 +388,17 @@ func (c *Client) MoveEmails(emailIDs []string, targetMailboxID jmap.ID) (succeed
 		for _, inv := range resp.Responses {
 			switch r := inv.Args.(type) {
 			case *email.SetResponse:
-				for id := range r.Updated {
-					succeeded = append(succeeded, string(id))
-				}
-				for id, setErr := range r.NotUpdated {
-					desc := "unknown error"
-					if setErr.Description != nil {
-						desc = *setErr.Description
+				for _, idStr := range batch {
+					jid := jmap.ID(idStr)
+					if _, ok := r.Updated[jid]; ok {
+						succeeded = append(succeeded, idStr)
+					} else if setErr, ok := r.NotUpdated[jid]; ok {
+						desc := "unknown error"
+						if setErr.Description != nil {
+							desc = *setErr.Description
+						}
+						errors = append(errors, fmt.Sprintf("%s: %s", idStr, desc))
 					}
-					errors = append(errors, fmt.Sprintf("%s: %s", id, desc))
 				}
 			case *jmap.MethodError:
 				for _, id := range batch {
@@ -444,15 +446,17 @@ func (c *Client) MarkAsSpam(emailIDs []string, junkMailboxID jmap.ID) (succeeded
 		for _, inv := range resp.Responses {
 			switch r := inv.Args.(type) {
 			case *email.SetResponse:
-				for id := range r.Updated {
-					succeeded = append(succeeded, string(id))
-				}
-				for id, setErr := range r.NotUpdated {
-					desc := "unknown error"
-					if setErr.Description != nil {
-						desc = *setErr.Description
+				for _, idStr := range batch {
+					jid := jmap.ID(idStr)
+					if _, ok := r.Updated[jid]; ok {
+						succeeded = append(succeeded, idStr)
+					} else if setErr, ok := r.NotUpdated[jid]; ok {
+						desc := "unknown error"
+						if setErr.Description != nil {
+							desc = *setErr.Description
+						}
+						errors = append(errors, fmt.Sprintf("%s: %s", idStr, desc))
 					}
-					errors = append(errors, fmt.Sprintf("%s: %s", id, desc))
 				}
 			case *jmap.MethodError:
 				for _, id := range batch {

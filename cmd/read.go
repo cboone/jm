@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -25,18 +26,26 @@ var readCmd = &cobra.Command{
 		if showThread {
 			tv, err := c.ReadThread(emailID, preferHTML, rawHeaders)
 			if err != nil {
-				return exitError("not_found", err.Error(), "")
+				return exitError(readErrorCode(err), err.Error(), "")
 			}
 			return formatter().Format(os.Stdout, tv)
 		}
 
 		detail, err := c.ReadEmail(emailID, preferHTML, rawHeaders)
 		if err != nil {
-			return exitError("not_found", err.Error(), "")
+			return exitError(readErrorCode(err), err.Error(), "")
 		}
 
 		return formatter().Format(os.Stdout, detail)
 	},
+}
+
+// readErrorCode returns "not_found" for missing-email errors and "jmap_error" for others.
+func readErrorCode(err error) string {
+	if strings.Contains(err.Error(), "not found") {
+		return "not_found"
+	}
+	return "jmap_error"
 }
 
 func init() {
