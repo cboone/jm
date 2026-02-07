@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 )
 
 type roundTripFunc func(*http.Request) (*http.Response, error)
@@ -59,6 +60,47 @@ func TestRetryTransport_RetriesWithFreshRequestBody(t *testing.T) {
 	}
 	if bodies[0] != "payload" || bodies[1] != "payload" {
 		t.Fatalf("expected both attempts to send full payload, got %q", bodies)
+	}
+}
+
+func TestRetryDelay_IntegerSeconds(t *testing.T) {
+	resp := &http.Response{Header: http.Header{"Retry-After": []string{"5"}}}
+	d := retryDelay(resp, 0)
+	if d != 5*time.Second {
+		t.Fatalf("expected 5s, got %v", d)
+	}
+}
+
+func TestRetryDelay_HTTPDate(t *testing.T) {
+	future := time.Now().Add(10 * time.Second)
+	resp := &http.Response{Header: http.Header{
+		"Retry-After": []string{future.UTC().Format(http.TimeFormat)},
+	}}
+	d := retryDelay(resp, 0)
+	if d < 9*time.Second || d > 11*time.Second {
+		t.Fatalf("expected ~10s, got %v", d)
+	}
+}
+
+func TestRetryDelay_HTTPDateInPast(t *testing.T) {
+	past := time.Now().Add(-10 * time.Second)
+	resp := &http.Response{Header: http.Header{
+		"Retry-After": []string{past.UTC().Format(http.TimeFormat)},
+	}}
+	d := retryDelay(resp, 1)
+	// Past date should fall through to exponential backoff (2s for attempt 1).
+	if d != 2*time.Second {
+		t.Fatalf("expected 2s exponential backoff, got %v", d)
+	}
+}
+
+func TestRetryDelay_ExponentialBackoff(t *testing.T) {
+	resp := &http.Response{Header: http.Header{}}
+	for attempt, want := range []time.Duration{1 * time.Second, 2 * time.Second, 4 * time.Second} {
+		d := retryDelay(resp, attempt)
+		if d != want {
+			t.Fatalf("attempt %d: expected %v, got %v", attempt, want, d)
+		}
 	}
 }
 

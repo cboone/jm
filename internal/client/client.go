@@ -161,6 +161,11 @@ func retryDelay(resp *http.Response, attempt int) time.Duration {
 		if seconds, err := strconv.Atoi(ra); err == nil {
 			return time.Duration(seconds) * time.Second
 		}
+		if t, err := http.ParseTime(ra); err == nil {
+			if d := time.Until(t); d > 0 {
+				return d
+			}
+		}
 	}
 	// Exponential backoff: 1s, 2s, 4s.
 	return time.Duration(1<<uint(attempt)) * time.Second
