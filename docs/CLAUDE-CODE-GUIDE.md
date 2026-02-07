@@ -47,7 +47,7 @@ Claude Code calls `jm` directly via shell. No MCP server configuration is needed
 
 Add this to your project's `CLAUDE.md` to give Claude Code context about `jm`:
 
-````markdown
+```markdown
 ## Email (jm)
 
 `jm` is a CLI for reading and triaging JMAP email (Fastmail). All commands output JSON by default.
@@ -55,6 +55,7 @@ Add this to your project's `CLAUDE.md` to give Claude Code context about `jm`:
 ### Commands
 
 **Read commands:**
+
 - `jm session` -- verify connectivity and auth
 - `jm mailboxes` -- list all mailboxes (add `--roles-only` for just system mailboxes)
 - `jm list` -- list emails in inbox (flags: `--mailbox`, `--limit`, `--offset`, `--unread`, `--sort`)
@@ -62,17 +63,19 @@ Add this to your project's `CLAUDE.md` to give Claude Code context about `jm`:
 - `jm search [query]` -- search by text and/or filters (flags: `--mailbox`, `--limit`, `--from`, `--to`, `--subject`, `--before`, `--after`, `--has-attachment`)
 
 **Triage commands:**
+
 - `jm archive <id> [id...]` -- move to Archive
 - `jm spam <id> [id...]` -- move to Junk
 - `jm move <id> [id...] --to <mailbox>` -- move to a named mailbox
 
 ### Notes
+
 - Output is JSON by default; errors are JSON on stderr with exit code 1
 - Email IDs from `list` and `search` chain directly into `read`, `archive`, `spam`, and `move`
 - Sending and deleting email are structurally disallowed
 - Date filters use RFC 3339 format (e.g., `2026-01-15T00:00:00Z`)
 - Batch operations (`archive`, `spam`, `move`) accept multiple IDs
-````
+```
 
 ## Workflows
 
@@ -155,18 +158,17 @@ All errors produce exit code 1. Structured error details are written to **stderr
 ```json
 {
   "error": "not_found",
-  "message": "email M-nonexistent not found",
-  "hint": ""
+  "message": "email M-nonexistent not found"
 }
 ```
 
 **Common errors:**
 
-| Error code | Meaning | Typical cause |
-|------------|---------|---------------|
-| `authentication_failed` | Token is missing or invalid | `JMAP_TOKEN` not set or expired |
-| `not_found` | Email or mailbox not found | Stale email ID or typo in mailbox name |
-| `forbidden_operation` | Safety constraint triggered | Attempted to move to Trash |
+| Error code              | Meaning                     | Typical cause                          |
+| ----------------------- | --------------------------- | -------------------------------------- |
+| `authentication_failed` | Token is missing or invalid | `JMAP_TOKEN` not set or expired        |
+| `not_found`             | Email or mailbox not found  | Stale email ID or typo in mailbox name |
+| `forbidden_operation`   | Safety constraint triggered | Attempted to move to Trash             |
 
 For the full error code list and schema details, see [CLI Reference: Error Reference](CLI-REFERENCE.md#error-reference).
 

@@ -4,13 +4,13 @@ Complete reference for all `jm` commands, flags, output schemas, and error codes
 
 ## Global Flags
 
-| Flag | Env Var | Default | Description |
-|------|---------|---------|-------------|
-| `--token` | `JMAP_TOKEN` | (none) | Bearer token for authentication |
-| `--session-url` | `JMAP_SESSION_URL` | `https://api.fastmail.com/jmap/session` | JMAP session endpoint |
-| `--format` | `JMAP_FORMAT` | `json` | Output format: `json` or `text` |
-| `--account-id` | `JMAP_ACCOUNT_ID` | (auto-detected) | JMAP account ID override |
-| `--config` | -- | `~/.config/jm/config.yaml` | Config file path |
+| Flag            | Env Var            | Default                                 | Description                     |
+| --------------- | ------------------ | --------------------------------------- | ------------------------------- |
+| `--token`       | `JMAP_TOKEN`       | (none)                                  | Bearer token for authentication |
+| `--session-url` | `JMAP_SESSION_URL` | `https://api.fastmail.com/jmap/session` | JMAP session endpoint           |
+| `--format`      | `JMAP_FORMAT`      | `json`                                  | Output format: `json` or `text` |
+| `--account-id`  | `JMAP_ACCOUNT_ID`  | (auto-detected)                         | JMAP account ID override        |
+| `--config`      | --                 | `~/.config/jm/config.yaml`              | Config file path                |
 
 Configuration sources are resolved in priority order: flags > environment variables > config file.
 
@@ -22,7 +22,7 @@ Configuration sources are resolved in priority order: flags > environment variab
 
 Display JMAP session info. Useful for verifying connectivity, checking capabilities, and discovering account IDs.
 
-```
+```bash
 jm session
 ```
 
@@ -45,7 +45,7 @@ No arguments. No command-specific flags.
 
 **Text output:**
 
-```
+```text
 Username: user@fastmail.com
 Capabilities: urn:ietf:params:jmap:core, urn:ietf:params:jmap:mail
 Account: abc123 - user@fastmail.com (personal)
@@ -57,14 +57,14 @@ Account: abc123 - user@fastmail.com (personal)
 
 List all mailboxes (folders/labels) in the account.
 
-```
+```bash
 jm mailboxes
 ```
 
 No arguments.
 
-| Flag | Default | Description |
-|------|---------|-------------|
+| Flag           | Default | Description                                                          |
+| -------------- | ------- | -------------------------------------------------------------------- |
 | `--roles-only` | `false` | Only show mailboxes with a defined role (inbox, archive, junk, etc.) |
 
 **JSON output:**
@@ -90,7 +90,7 @@ No arguments.
 
 **Text output:**
 
-```
+```text
 Inbox                                    mb-inbox-id  total:1542   unread:12     [inbox]
 Archive                                  mb-archive-id  total:48210  unread:0      [archive]
 ```
@@ -103,19 +103,19 @@ Fields with no role omit the `role` field in JSON and the `[role]` tag in text.
 
 List emails in a mailbox. Returns a summary of each email (not the full body).
 
-```
+```bash
 jm list [flags]
 ```
 
 No arguments.
 
-| Flag | Short | Default | Description |
-|------|-------|---------|-------------|
-| `--mailbox` | `-m` | `inbox` | Mailbox name or ID |
-| `--limit` | `-l` | `25` | Maximum number of results (minimum 1) |
-| `--offset` | `-o` | `0` | Pagination offset (non-negative) |
-| `--unread` | `-u` | `false` | Only show unread messages |
-| `--sort` | `-s` | `receivedAt desc` | Sort order: field + direction |
+| Flag        | Short | Default           | Description                           |
+| ----------- | ----- | ----------------- | ------------------------------------- |
+| `--mailbox` | `-m`  | `inbox`           | Mailbox name or ID                    |
+| `--limit`   | `-l`  | `25`              | Maximum number of results (minimum 1) |
+| `--offset`  | `-o`  | `0`               | Pagination offset (non-negative)      |
+| `--unread`  | `-u`  | `false`           | Only show unread messages             |
+| `--sort`    | `-s`  | `receivedAt desc` | Sort order: field + direction         |
 
 **Sort fields:** `receivedAt`, `sentAt`, `from`, `subject` (case-insensitive).
 **Sort direction:** `asc` or `desc` (default: `desc`). Append after the field name, separated by a space.
@@ -132,8 +132,8 @@ Examples: `"receivedAt desc"`, `"subject asc"`, `"from asc"`.
     {
       "id": "M-email-id",
       "thread_id": "T-thread-id",
-      "from": [{"name": "Alice", "email": "alice@example.com"}],
-      "to": [{"name": "Me", "email": "me@fastmail.com"}],
+      "from": [{ "name": "Alice", "email": "alice@example.com" }],
+      "to": [{ "name": "Me", "email": "me@fastmail.com" }],
       "subject": "Meeting tomorrow",
       "received_at": "2026-02-04T10:30:00Z",
       "size": 4521,
@@ -147,7 +147,7 @@ Examples: `"receivedAt desc"`, `"subject asc"`, `"from asc"`.
 
 **Text output:**
 
-```
+```text
 Total: 1542 (showing 25 from offset 0)
 
 * Alice <alice@example.com>          Meeting tomorrow                                    2026-02-04 10:30
@@ -162,17 +162,17 @@ Unread emails are marked with `*` in text output.
 
 Read the full content of a specific email by ID.
 
-```
+```bash
 jm read <email-id> [flags]
 ```
 
 Exactly 1 argument required: the email ID.
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--html` | `false` | Prefer HTML body (default: plain text) |
-| `--raw-headers` | `false` | Include all raw email headers |
-| `--thread` | `false` | Show all emails in the same thread (conversation view) |
+| Flag            | Default | Description                                            |
+| --------------- | ------- | ------------------------------------------------------ |
+| `--html`        | `false` | Prefer HTML body (default: plain text)                 |
+| `--raw-headers` | `false` | Include all raw email headers                          |
+| `--thread`      | `false` | Show all emails in the same thread (conversation view) |
 
 **JSON output (basic read):**
 
@@ -180,8 +180,8 @@ Exactly 1 argument required: the email ID.
 {
   "id": "M-email-id",
   "thread_id": "T-thread-id",
-  "from": [{"name": "Alice", "email": "alice@example.com"}],
-  "to": [{"name": "Me", "email": "me@fastmail.com"}],
+  "from": [{ "name": "Alice", "email": "alice@example.com" }],
+  "to": [{ "name": "Me", "email": "me@fastmail.com" }],
   "cc": [],
   "subject": "Meeting tomorrow",
   "sent_at": "2026-02-04T10:29:00Z",
@@ -206,8 +206,8 @@ Exactly 1 argument required: the email ID.
   "email": {
     "id": "M-email-id",
     "thread_id": "T-thread-id",
-    "from": [{"name": "Alice", "email": "alice@example.com"}],
-    "to": [{"name": "Me", "email": "me@fastmail.com"}],
+    "from": [{ "name": "Alice", "email": "alice@example.com" }],
+    "to": [{ "name": "Me", "email": "me@fastmail.com" }],
     "cc": [],
     "subject": "Meeting tomorrow",
     "received_at": "2026-02-04T10:30:00Z",
@@ -219,8 +219,8 @@ Exactly 1 argument required: the email ID.
   "thread": [
     {
       "id": "M-earlier-email",
-      "from": [{"name": "Me", "email": "me@fastmail.com"}],
-      "to": [{"name": "Alice", "email": "alice@example.com"}],
+      "from": [{ "name": "Me", "email": "me@fastmail.com" }],
+      "to": [{ "name": "Alice", "email": "alice@example.com" }],
       "subject": "Meeting tomorrow",
       "received_at": "2026-02-04T09:00:00Z",
       "preview": "Can we meet tomorrow at 3pm?",
@@ -228,8 +228,8 @@ Exactly 1 argument required: the email ID.
     },
     {
       "id": "M-email-id",
-      "from": [{"name": "Alice", "email": "alice@example.com"}],
-      "to": [{"name": "Me", "email": "me@fastmail.com"}],
+      "from": [{ "name": "Alice", "email": "alice@example.com" }],
+      "to": [{ "name": "Me", "email": "me@fastmail.com" }],
       "subject": "Meeting tomorrow",
       "received_at": "2026-02-04T10:30:00Z",
       "preview": "Hi, just wanted to confirm our meeting...",
@@ -241,7 +241,7 @@ Exactly 1 argument required: the email ID.
 
 **Text output (basic read):**
 
-```
+```text
 Subject: Meeting tomorrow
 From: Alice <alice@example.com>
 To: Me <me@fastmail.com>
@@ -261,7 +261,7 @@ Attachments (1):
 
 **Text output (with --thread):**
 
-```
+```text
 Thread (2 messages):
 
   [1] Me <me@fastmail.com> - Meeting tomorrow (2026-02-04 09:00)
@@ -292,22 +292,22 @@ The `>` marker indicates the target email. Thread emails other than the target s
 
 Search emails by full-text query and/or structured filters.
 
-```
+```bash
 jm search [query] [flags]
 ```
 
 0 or 1 argument. The optional `[query]` searches across subject, from, to, and body. If omitted, only the provided flags are used for filtering (filter-only search).
 
-| Flag | Short | Default | Description |
-|------|-------|---------|-------------|
-| `--mailbox` | `-m` | (all mailboxes) | Restrict search to a specific mailbox |
-| `--limit` | `-l` | `25` | Maximum results (minimum 1) |
-| `--from` | | (none) | Filter by sender address or name |
-| `--to` | | (none) | Filter by recipient address or name |
-| `--subject` | | (none) | Filter by subject text |
-| `--before` | | (none) | Emails received before this date (RFC 3339) |
-| `--after` | | (none) | Emails received after this date (RFC 3339) |
-| `--has-attachment` | | `false` | Only emails with attachments |
+| Flag               | Short | Default         | Description                                 |
+| ------------------ | ----- | --------------- | ------------------------------------------- |
+| `--mailbox`        | `-m`  | (all mailboxes) | Restrict search to a specific mailbox       |
+| `--limit`          | `-l`  | `25`            | Maximum results (minimum 1)                 |
+| `--from`           |       | (none)          | Filter by sender address or name            |
+| `--to`             |       | (none)          | Filter by recipient address or name         |
+| `--subject`        |       | (none)          | Filter by subject text                      |
+| `--before`         |       | (none)          | Emails received before this date (RFC 3339) |
+| `--after`          |       | (none)          | Emails received after this date (RFC 3339)  |
+| `--has-attachment` |       | `false`         | Only emails with attachments                |
 
 **Date format:** RFC 3339, e.g. `2026-01-15T00:00:00Z`.
 
@@ -325,8 +325,8 @@ Same shape as `list` output (`EmailListResult`), with an additional `snippet` fi
     {
       "id": "M-email-id",
       "thread_id": "T-thread-id",
-      "from": [{"name": "Alice", "email": "alice@example.com"}],
-      "to": [{"name": "Me", "email": "me@fastmail.com"}],
+      "from": [{ "name": "Alice", "email": "alice@example.com" }],
+      "to": [{ "name": "Me", "email": "me@fastmail.com" }],
       "subject": "Meeting tomorrow",
       "received_at": "2026-02-04T10:30:00Z",
       "size": 4521,
@@ -349,7 +349,7 @@ The `snippet` field contains HTML `<mark>` tags highlighting matched terms. It i
 
 Move one or more emails to the Archive mailbox.
 
-```
+```bash
 jm archive <email-id> [email-id...]
 ```
 
@@ -370,7 +370,7 @@ jm archive <email-id> [email-id...]
 
 **Text output:**
 
-```
+```text
 Archived: M-email-id-1, M-email-id-2
 Destination: Archive (mb-archive-id)
 ```
@@ -383,7 +383,7 @@ If some emails fail, the successful ones are still listed and errors appear in t
 
 Move one or more emails to the Junk/Spam mailbox.
 
-```
+```bash
 jm spam <email-id> [email-id...]
 ```
 
@@ -404,7 +404,7 @@ jm spam <email-id> [email-id...]
 
 **Text output:**
 
-```
+```text
 Marked as spam: M-email-id-1
 Destination: Junk Mail (mb-junk-id)
 ```
@@ -417,15 +417,15 @@ If some emails fail, the successful ones are still listed and errors appear in t
 
 Move one or more emails to a specified mailbox by name or ID.
 
-```
+```bash
 jm move <email-id> [email-id...] --to <mailbox>
 ```
 
 1 or more arguments required.
 
-| Flag | Required | Default | Description |
-|------|----------|---------|-------------|
-| `--to` | yes | (none) | Target mailbox name or ID |
+| Flag   | Required | Default | Description               |
+| ------ | -------- | ------- | ------------------------- |
+| `--to` | yes      | (none)  | Target mailbox name or ID |
 
 **Safety:** The `move` command refuses to target Trash, Deleted Items, or Deleted Messages (by role or name, case-insensitive). Attempting this returns a `forbidden_operation` error.
 
@@ -444,7 +444,7 @@ jm move <email-id> [email-id...] --to <mailbox>
 
 **Text output:**
 
-```
+```text
 Moved: M-email-id-1
 Destination: Receipts (mb-receipts-id)
 ```
@@ -480,64 +480,64 @@ All JSON output is pretty-printed (2-space indent). These schemas are derived fr
 
 Returned by the `mailboxes` command (as an array).
 
-| Field | Type | Notes |
-|-------|------|-------|
-| `id` | string | |
-| `name` | string | |
-| `role` | string | Omitted if empty |
-| `total_emails` | number | |
-| `unread_emails` | number | |
-| `parent_id` | string | Omitted if empty |
+| Field           | Type   | Notes            |
+| --------------- | ------ | ---------------- |
+| `id`            | string |                  |
+| `name`          | string |                  |
+| `role`          | string | Omitted if empty |
+| `total_emails`  | number |                  |
+| `unread_emails` | number |                  |
+| `parent_id`     | string | Omitted if empty |
 
 ### EmailSummary
 
 Returned within `EmailListResult` by the `list` and `search` commands.
 
-| Field | Type | Notes |
-|-------|------|-------|
-| `id` | string | |
-| `thread_id` | string | |
-| `from` | Address[] | |
-| `to` | Address[] | |
-| `subject` | string | |
-| `received_at` | string | RFC 3339 timestamp |
-| `size` | number | Bytes |
-| `is_unread` | boolean | |
-| `is_flagged` | boolean | |
-| `preview` | string | Server-generated preview |
-| `snippet` | string | Omitted unless text search is used |
+| Field         | Type      | Notes                              |
+| ------------- | --------- | ---------------------------------- |
+| `id`          | string    |                                    |
+| `thread_id`   | string    |                                    |
+| `from`        | Address[] |                                    |
+| `to`          | Address[] |                                    |
+| `subject`     | string    |                                    |
+| `received_at` | string    | RFC 3339 timestamp                 |
+| `size`        | number    | Bytes                              |
+| `is_unread`   | boolean   |                                    |
+| `is_flagged`  | boolean   |                                    |
+| `preview`     | string    | Server-generated preview           |
+| `snippet`     | string    | Omitted unless text search is used |
 
 ### EmailListResult
 
 Top-level response from `list` and `search` commands.
 
-| Field | Type | Notes |
-|-------|------|-------|
-| `total` | number | Total matching emails |
-| `offset` | number | Current pagination offset |
-| `emails` | EmailSummary[] | |
+| Field    | Type           | Notes                     |
+| -------- | -------------- | ------------------------- |
+| `total`  | number         | Total matching emails     |
+| `offset` | number         | Current pagination offset |
+| `emails` | EmailSummary[] |                           |
 
 ### EmailDetail
 
 Returned by the `read` command (without `--thread`).
 
-| Field | Type | Notes |
-|-------|------|-------|
-| `id` | string | |
-| `thread_id` | string | |
-| `from` | Address[] | |
-| `to` | Address[] | |
-| `cc` | Address[] | |
-| `bcc` | Address[] | Omitted if empty |
-| `reply_to` | Address[] | Omitted if empty |
-| `subject` | string | |
-| `sent_at` | string | RFC 3339 timestamp; omitted if unavailable |
-| `received_at` | string | RFC 3339 timestamp |
-| `is_unread` | boolean | |
-| `is_flagged` | boolean | |
-| `body` | string | Plain text by default; HTML with `--html` |
-| `attachments` | Attachment[] | |
-| `headers` | Header[] | Omitted unless `--raw-headers` is used |
+| Field         | Type         | Notes                                      |
+| ------------- | ------------ | ------------------------------------------ |
+| `id`          | string       |                                            |
+| `thread_id`   | string       |                                            |
+| `from`        | Address[]    |                                            |
+| `to`          | Address[]    |                                            |
+| `cc`          | Address[]    |                                            |
+| `bcc`         | Address[]    | Omitted if empty                           |
+| `reply_to`    | Address[]    | Omitted if empty                           |
+| `subject`     | string       |                                            |
+| `sent_at`     | string       | RFC 3339 timestamp; omitted if unavailable |
+| `received_at` | string       | RFC 3339 timestamp                         |
+| `is_unread`   | boolean      |                                            |
+| `is_flagged`  | boolean      |                                            |
+| `body`        | string       | Plain text by default; HTML with `--html`  |
+| `attachments` | Attachment[] |                                            |
+| `headers`     | Header[]     | Omitted unless `--raw-headers` is used     |
 
 ### Header
 
@@ -552,59 +552,59 @@ Returned by the `read` command (without `--thread`).
 
 Condensed view of an email within a thread listing.
 
-| Field | Type | Notes |
-|-------|------|-------|
-| `id` | string | |
-| `from` | Address[] | |
-| `to` | Address[] | |
-| `subject` | string | |
-| `received_at` | string | RFC 3339 timestamp |
-| `preview` | string | |
-| `is_unread` | boolean | |
+| Field         | Type      | Notes              |
+| ------------- | --------- | ------------------ |
+| `id`          | string    |                    |
+| `from`        | Address[] |                    |
+| `to`          | Address[] |                    |
+| `subject`     | string    |                    |
+| `received_at` | string    | RFC 3339 timestamp |
+| `preview`     | string    |                    |
+| `is_unread`   | boolean   |                    |
 
 ### ThreadView
 
 Returned by `read --thread`. Wraps a full email with surrounding thread context.
 
-| Field | Type | Notes |
-|-------|------|-------|
-| `email` | EmailDetail | The requested email in full |
+| Field    | Type          | Notes                                             |
+| -------- | ------------- | ------------------------------------------------- |
+| `email`  | EmailDetail   | The requested email in full                       |
 | `thread` | ThreadEmail[] | All emails in the thread, sorted by `received_at` |
 
 ### SessionInfo
 
 Returned by the `session` command.
 
-| Field | Type | Notes |
-|-------|------|-------|
-| `username` | string | |
-| `accounts` | map[string]AccountInfo | Keyed by account ID |
-| `capabilities` | string[] | |
+| Field          | Type                   | Notes               |
+| -------------- | ---------------------- | ------------------- |
+| `username`     | string                 |                     |
+| `accounts`     | map[string]AccountInfo | Keyed by account ID |
+| `capabilities` | string[]               |                     |
 
 ### AccountInfo
 
-| Field | Type | Notes |
-|-------|------|-------|
-| `name` | string | |
-| `is_personal` | boolean | |
+| Field         | Type    | Notes |
+| ------------- | ------- | ----- |
+| `name`        | string  |       |
+| `is_personal` | boolean |       |
 
 ### MoveResult
 
 Returned by `archive`, `spam`, and `move` commands. Only the relevant action field is populated.
 
-| Field | Type | Notes |
-|-------|------|-------|
-| `moved` | string[] | Omitted unless `move` command |
-| `archived` | string[] | Omitted unless `archive` command |
-| `marked_as_spam` | string[] | Omitted unless `spam` command |
-| `destination` | DestinationInfo | Omitted on total failure |
-| `errors` | string[] | Empty array on full success |
+| Field            | Type            | Notes                            |
+| ---------------- | --------------- | -------------------------------- |
+| `moved`          | string[]        | Omitted unless `move` command    |
+| `archived`       | string[]        | Omitted unless `archive` command |
+| `marked_as_spam` | string[]        | Omitted unless `spam` command    |
+| `destination`    | DestinationInfo | Omitted on total failure         |
+| `errors`         | string[]        | Empty array on full success      |
 
 ### DestinationInfo
 
-| Field | Type | Notes |
-|-------|------|-------|
-| `id` | string | Mailbox ID |
+| Field  | Type   | Notes        |
+| ------ | ------ | ------------ |
+| `id`   | string | Mailbox ID   |
 | `name` | string | Mailbox name |
 
 ---
@@ -620,8 +620,7 @@ Errors are written to **stderr**. The format depends on the `--format` setting.
 ```json
 {
   "error": "not_found",
-  "message": "email M-nonexistent not found",
-  "hint": ""
+  "message": "email M-nonexistent not found"
 }
 ```
 
@@ -629,29 +628,29 @@ The `hint` field is omitted when empty.
 
 **Text:**
 
-```
+```text
 Error [not_found]: email M-nonexistent not found
 ```
 
 When a hint is present:
 
-```
+```text
 Error [authentication_failed]: JMAP session request returned 401: invalid bearer token
 Hint: Check your token in JMAP_TOKEN or config file
 ```
 
 ### Error Codes
 
-| Code | Description | Example hint |
-|------|-------------|-------------|
-| `authentication_failed` | Token is missing, invalid, or expired | Check your token in JMAP_TOKEN or config file |
-| `not_found` | Email ID or mailbox not found | (varies) |
-| `forbidden_operation` | Attempted a disallowed action (e.g., move to Trash) | Deletion is not permitted by this tool |
-| `jmap_error` | Server-side JMAP method error | (varies) |
-| `network_error` | Connection or timeout failure | (varies) |
-| `general_error` | Invalid flag values or other client-side errors | (varies) |
-| `config_error` | Malformed config file | Fix the syntax in ~/.config/jm/config.yaml or use --config |
-| `partial_failure` | Some IDs in a batch operation failed | (none) |
+| Code                    | Description                                         | Example hint                                               |
+| ----------------------- | --------------------------------------------------- | ---------------------------------------------------------- |
+| `authentication_failed` | Token is missing, invalid, or expired               | Check your token in JMAP_TOKEN or config file              |
+| `not_found`             | Email ID or mailbox not found                       | (varies)                                                   |
+| `forbidden_operation`   | Attempted a disallowed action (e.g., move to Trash) | Deletion is not permitted by this tool                     |
+| `jmap_error`            | Server-side JMAP method error                       | (varies)                                                   |
+| `network_error`         | Connection or timeout failure                       | (varies)                                                   |
+| `general_error`         | Invalid flag values or other client-side errors     | (varies)                                                   |
+| `config_error`          | Malformed config file                               | Fix the syntax in ~/.config/jm/config.yaml or use --config |
+| `partial_failure`       | Some IDs in a batch operation failed                | (none)                                                     |
 
 ### Cobra Validation Errors
 
@@ -659,7 +658,7 @@ Cobra (the CLI framework) handles argument and flag validation before `jm` comma
 
 Examples:
 
-```
+```text
 Error: accepts 1 arg(s), received 0
 Error: required flag(s) "to" not set
 Error: unknown flag: --bogus
@@ -667,7 +666,7 @@ Error: unknown flag: --bogus
 
 ### Exit Codes
 
-| Code | Meaning |
-|------|---------|
-| `0` | Success |
-| `1` | Any error (authentication, not found, forbidden, JMAP, network, config, general) |
+| Code | Meaning                                                                          |
+| ---- | -------------------------------------------------------------------------------- |
+| `0`  | Success                                                                          |
+| `1`  | Any error (authentication, not found, forbidden, JMAP, network, config, general) |

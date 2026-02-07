@@ -133,7 +133,7 @@ See [docs/CLI-REFERENCE.md](docs/CLI-REFERENCE.md) for full details on all flags
 
 **Text** (`--format text`):
 
-```
+```text
 Total: 42 (showing 25 from offset 0)
 
 * Alice <alice@example.com>          Meeting tomorrow                                    2026-02-04 10:30
