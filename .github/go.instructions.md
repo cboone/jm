@@ -1,0 +1,16 @@
+---
+applyTo: "**/*.go"
+---
+
+- **Test coverage**: This project has unit tests in `*_test.go` files alongside source files. Check for existing test files before suggesting missing tests. In particular, `internal/output/text_test.go` has comprehensive tests for all `TextFormatter.Format` paths, and `internal/client/email_test.go` tests all conversion helpers and patch structures.
+- **MoveEmails replaces mailboxIds intentionally**: `MoveEmails` and `MarkAsSpam` in `internal/client/email.go` replace all `mailboxIds` with only the target mailbox. This is intentional move semantics, not a bug. Do not suggest preserving other mailbox associations.
+- **Core client methods require a live JMAP server**: Functions like `ListEmails`, `ReadEmail`, `SearchEmails`, `MoveEmails` in the client package cannot be unit-tested without a real JMAP server. Their helper functions are tested instead. Do not flag missing unit tests for these methods.
+- **Flag validation order**: Commands validate local flags (--limit, --before, --after) before calling `newClient()`. Do not suggest reordering validation before the client when it is already in that order.
+- **Safety via structural omission**: `MoveEmails` and `MarkAsSpam` only populate the `Update` field of `Email/set`. The `Destroy` and `Create` fields are never set. This is the safety mechanism -- do not suggest adding `ValidateNoDestroy` or `ValidateNoSubmission` wrapper functions.
+- **Search query is optional**: `jm search` accepts zero or one positional args. Filter-only search (no query, only flags) is a supported use case.
+- **Deterministic output ordering**: `MoveEmails` and `MarkAsSpam` iterate over the input `batch` slice to build results, preserving caller-provided order. Do not suggest iterating over map keys from `r.Updated`/`r.NotUpdated`.
+- **Read command error codes**: The `read` command distinguishes `not_found` (email missing) from `jmap_error` (network/JMAP failures) using `errors.Is(err, client.ErrNotFound)`. The client package defines a sentinel `ErrNotFound` error wrapped via `%w`. Do not suggest string-matching on error messages for error classification.
+- **ReadEmail fetches both body value types**: `ReadEmail` always sets both `FetchHTMLBodyValues` and `FetchTextBodyValues` to true so that `extractBody` can fall back between HTML and text. Do not suggest conditional fetching based on `preferHTML`.
+- **Format flag is validated early**: The `--format` flag is validated in `PersistentPreRunE` before any command runs. `output.New` intentionally falls back to JSON as a default since validation has already occurred. Do not suggest adding validation inside `output.New`.
+- **Retry-After supports both formats**: `retryDelay` in `internal/client/client.go` parses `Retry-After` as both integer seconds and HTTP-date (via `http.ParseTime`). Past HTTP-dates fall through to exponential backoff. Do not suggest adding HTTP-date parsing when it is already present.
+- **CLI tests use scrut**: The `tests/*.md` files are [scrut](https://github.com/facebookincubator/scrut) CLI tests. They are executed in CI via `scrut test tests/` after building the binary. Do not flag these as lacking a test runner.
