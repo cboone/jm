@@ -122,6 +122,11 @@ func formatter() output.Formatter {
 // exitError writes a structured error to stderr and returns ErrSilent
 // to signal that the error has already been printed.
 func exitError(code string, message string, hint string) error {
-	formatter().FormatError(os.Stderr, code, message, hint)
+	if err := formatter().FormatError(os.Stderr, code, message, hint); err != nil {
+		fmt.Fprintf(os.Stderr, "error [%s]: %s\n", code, message)
+		if hint != "" {
+			fmt.Fprintf(os.Stderr, "hint: %s\n", hint)
+		}
+	}
 	return ErrSilent
 }

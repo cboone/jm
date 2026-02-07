@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -116,11 +117,13 @@ func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 			return resp, nil
 		}
 		if attempt == maxRetries {
+			io.Copy(io.Discard, resp.Body)
 			resp.Body.Close()
 			return nil, fmt.Errorf("max retries exceeded: received status %d", resp.StatusCode)
 		}
 
 		wait := retryDelay(resp, attempt)
+		io.Copy(io.Discard, resp.Body)
 		resp.Body.Close()
 		time.Sleep(wait)
 	}
