@@ -8,3 +8,5 @@ applyTo: "**/*.go"
 - **Flag validation order**: Commands validate local flags (--limit, --before, --after) before calling `newClient()`. Do not suggest reordering validation before the client when it is already in that order.
 - **Safety via structural omission**: `MoveEmails` and `MarkAsSpam` only populate the `Update` field of `Email/set`. The `Destroy` and `Create` fields are never set. This is the safety mechanism -- do not suggest adding `ValidateNoDestroy` or `ValidateNoSubmission` wrapper functions.
 - **Search query is optional**: `jm search` accepts zero or one positional args. Filter-only search (no query, only flags) is a supported use case.
+- **Deterministic output ordering**: `MoveEmails` and `MarkAsSpam` iterate over the input `batch` slice to build results, preserving caller-provided order. Do not suggest iterating over map keys from `r.Updated`/`r.NotUpdated`.
+- **Read command error codes**: The `read` command distinguishes `not_found` (email missing) from `jmap_error` (network/JMAP failures) using a `readErrorCode` helper. Do not suggest using a single error code for all failures.
