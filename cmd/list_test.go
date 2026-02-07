@@ -3,7 +3,10 @@ package cmd
 import "testing"
 
 func TestParseSort_Default(t *testing.T) {
-	field, asc := parseSort("receivedAt desc")
+	field, asc, err := parseSort("receivedAt desc")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if field != "receivedAt" {
 		t.Errorf("expected field=receivedAt, got %s", field)
 	}
@@ -13,7 +16,10 @@ func TestParseSort_Default(t *testing.T) {
 }
 
 func TestParseSort_Ascending(t *testing.T) {
-	field, asc := parseSort("sentAt asc")
+	field, asc, err := parseSort("sentAt asc")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if field != "sentAt" {
 		t.Errorf("expected field=sentAt, got %s", field)
 	}
@@ -23,7 +29,10 @@ func TestParseSort_Ascending(t *testing.T) {
 }
 
 func TestParseSort_AscendingCaseInsensitive(t *testing.T) {
-	field, asc := parseSort("subject ASC")
+	field, asc, err := parseSort("subject ASC")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if field != "subject" {
 		t.Errorf("expected field=subject, got %s", field)
 	}
@@ -33,7 +42,10 @@ func TestParseSort_AscendingCaseInsensitive(t *testing.T) {
 }
 
 func TestParseSort_FieldOnly(t *testing.T) {
-	field, asc := parseSort("from")
+	field, asc, err := parseSort("from")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if field != "from" {
 		t.Errorf("expected field=from, got %s", field)
 	}
@@ -43,7 +55,10 @@ func TestParseSort_FieldOnly(t *testing.T) {
 }
 
 func TestParseSort_Empty(t *testing.T) {
-	field, asc := parseSort("")
+	field, asc, err := parseSort("")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if field != "receivedAt" {
 		t.Errorf("expected default field=receivedAt, got %s", field)
 	}
@@ -53,7 +68,10 @@ func TestParseSort_Empty(t *testing.T) {
 }
 
 func TestParseSort_ExtraWhitespace(t *testing.T) {
-	field, asc := parseSort("  receivedAt   asc  ")
+	field, asc, err := parseSort("  receivedAt   asc  ")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if field != "receivedAt" {
 		t.Errorf("expected field=receivedAt, got %s", field)
 	}
@@ -63,11 +81,31 @@ func TestParseSort_ExtraWhitespace(t *testing.T) {
 }
 
 func TestParseSort_UnknownDirection(t *testing.T) {
-	field, asc := parseSort("receivedAt up")
+	field, asc, err := parseSort("receivedAt up")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if field != "receivedAt" {
 		t.Errorf("expected field=receivedAt, got %s", field)
 	}
 	if asc {
 		t.Error("expected ascending=false for unknown direction")
+	}
+}
+
+func TestParseSort_InvalidField(t *testing.T) {
+	_, _, err := parseSort("invalid desc")
+	if err == nil {
+		t.Error("expected error for invalid sort field")
+	}
+}
+
+func TestParseSort_FieldCaseNormalization(t *testing.T) {
+	field, _, err := parseSort("ReceivedAt desc")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if field != "receivedAt" {
+		t.Errorf("expected field=receivedAt after normalization, got %s", field)
 	}
 }

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -17,10 +18,16 @@ var listCmd = &cobra.Command{
 			return exitError("general_error", "--limit must be at least 1", "")
 		}
 		offset, _ := cmd.Flags().GetInt64("offset")
+		if offset < 0 {
+			return exitError("general_error", "--offset must be non-negative", "")
+		}
 		unread, _ := cmd.Flags().GetBool("unread")
 		sort, _ := cmd.Flags().GetString("sort")
 
-		sortField, sortAsc := parseSort(sort)
+		sortField, sortAsc, err := parseSort(sort)
+		if err != nil {
+			return exitError("general_error", err.Error(), "Supported sort fields: receivedAt, sentAt, from, subject")
+		}
 
 		c, err := newClient()
 		if err != nil {
@@ -46,16 +53,27 @@ func init() {
 	rootCmd.AddCommand(listCmd)
 }
 
-func parseSort(s string) (field string, ascending bool) {
+var validSortFields = map[string]string{
+	"receivedat": "receivedAt",
+	"sentat":     "sentAt",
+	"from":       "from",
+	"subject":    "subject",
+}
+
+func parseSort(s string) (field string, ascending bool, err error) {
 	parts := strings.Fields(s)
 	field = "receivedAt"
 	ascending = false
 
 	if len(parts) >= 1 {
-		field = parts[0]
+		normalized, ok := validSortFields[strings.ToLower(parts[0])]
+		if !ok {
+			return "", false, fmt.Errorf("unsupported sort field %q", parts[0])
+		}
+		field = normalized
 	}
 	if len(parts) >= 2 && strings.EqualFold(parts[1], "asc") {
 		ascending = true
 	}
-	return field, ascending
+	return field, ascending, nil
 }
