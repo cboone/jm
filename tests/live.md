@@ -5,13 +5,9 @@ They are skipped automatically when preconditions are not met.
 
 ## Preconditions
 
-```scrut
-$ test "$JMAP_LIVE_TESTS" = "1" || exit 80
-```
-
-```scrut
-$ test -n "$JMAP_TOKEN" || exit 80
-```
+Each test block below includes an inline precondition guard of the form:
+`test "$JMAP_LIVE_TESTS" = "1" -a -n "$JMAP_TOKEN" || exit 80`, so that
+live tests are only run when `JMAP_LIVE_TESTS=1` and `JMAP_TOKEN` is set.
 
 ## Session returns JSON with username
 

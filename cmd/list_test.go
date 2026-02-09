@@ -81,15 +81,9 @@ func TestParseSort_ExtraWhitespace(t *testing.T) {
 }
 
 func TestParseSort_UnknownDirection(t *testing.T) {
-	field, asc, err := parseSort("receivedAt up")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if field != "receivedAt" {
-		t.Errorf("expected field=receivedAt, got %s", field)
-	}
-	if asc {
-		t.Error("expected ascending=false for unknown direction")
+	_, _, err := parseSort("receivedAt up")
+	if err == nil {
+		t.Error("expected error for unknown sort direction")
 	}
 }
 
