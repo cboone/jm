@@ -10,6 +10,7 @@ import (
 
 	"git.sr.ht/~rockorager/go-jmap"
 	"git.sr.ht/~rockorager/go-jmap/mail"
+	"git.sr.ht/~rockorager/go-jmap/mail/mailbox"
 
 	"github.com/cboone/jm/internal/types"
 )
@@ -21,8 +22,9 @@ const maxRetries = 3
 
 // Client wraps the go-jmap client with convenience methods and safety guardrails.
 type Client struct {
-	jmap      *jmap.Client
-	accountID jmap.ID
+	jmap         *jmap.Client
+	accountID    jmap.ID
+	mailboxCache []*mailbox.Mailbox
 }
 
 // New creates a Client, authenticates, and discovers the session.

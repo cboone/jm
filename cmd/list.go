@@ -61,6 +61,7 @@ var validSortFields = map[string]string{
 }
 
 func parseSort(s string) (field string, ascending bool, err error) {
+	s = strings.ReplaceAll(s, ":", " ")
 	parts := strings.Fields(s)
 	field = "receivedAt"
 	ascending = false

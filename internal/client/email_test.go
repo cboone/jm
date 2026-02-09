@@ -7,6 +7,7 @@ import (
 	"git.sr.ht/~rockorager/go-jmap"
 	"git.sr.ht/~rockorager/go-jmap/mail"
 	"git.sr.ht/~rockorager/go-jmap/mail/email"
+	"git.sr.ht/~rockorager/go-jmap/mail/searchsnippet"
 
 	"github.com/cboone/jm/internal/types"
 )
@@ -436,6 +437,65 @@ func TestMoveEmailsPatchStructure(t *testing.T) {
 	}
 	if _, ok := patch["create"]; ok {
 		t.Error("patch must not contain create")
+	}
+}
+
+// TestSearchSnippetReference verifies that SearchSnippet/get references
+// Email/query at path /ids (not Email/get at /list/*/id).
+func TestSearchSnippetReference(t *testing.T) {
+	filter := &email.FilterCondition{Text: "meeting"}
+
+	req := &jmap.Request{}
+	queryCallID := req.Invoke(&email.Query{
+		Account:        "test-account",
+		Filter:         filter,
+		Sort:           []*email.SortComparator{{Property: "receivedAt", IsAscending: false}},
+		Limit:          25,
+		CalculateTotal: true,
+	})
+
+	_ = req.Invoke(&email.Get{
+		Account:    "test-account",
+		Properties: summaryProperties,
+		ReferenceIDs: &jmap.ResultReference{
+			ResultOf: queryCallID,
+			Name:     "Email/query",
+			Path:     "/ids",
+		},
+	})
+
+	req.Invoke(&searchsnippet.Get{
+		Account: "test-account",
+		Filter:  filter,
+		ReferenceIDs: &jmap.ResultReference{
+			ResultOf: queryCallID,
+			Name:     "Email/query",
+			Path:     "/ids",
+		},
+	})
+
+	if len(req.Calls) != 3 {
+		t.Fatalf("expected 3 method calls, got %d", len(req.Calls))
+	}
+
+	snippetCall := req.Calls[2]
+	snippetGet, ok := snippetCall.Args.(*searchsnippet.Get)
+	if !ok {
+		t.Fatalf("expected third call args to be *searchsnippet.Get, got %T", snippetCall.Args)
+	}
+
+	ref := snippetGet.ReferenceIDs
+	if ref == nil {
+		t.Fatal("expected ReferenceIDs to be set")
+	}
+	if ref.ResultOf != queryCallID {
+		t.Errorf("expected ResultOf=%s (queryCallID), got %s", queryCallID, ref.ResultOf)
+	}
+	if ref.Name != "Email/query" {
+		t.Errorf("expected Name=Email/query, got %s", ref.Name)
+	}
+	if ref.Path != "/ids" {
+		t.Errorf("expected Path=/ids, got %s", ref.Path)
 	}
 }
 
