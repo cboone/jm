@@ -7,7 +7,7 @@ Verify that flags and configuration work correctly.
 The error output uses JSON format by default.
 
 ```scrut
-$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTDIR/../jm session 2>&1
+$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID HOME=/nonexistent $TESTDIR/../jm session 2>&1
 {
   "error": "authentication_failed",
   "message": "no token configured; set JMAP_TOKEN, --token, or token in config file",
@@ -19,7 +19,7 @@ $ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTD
 ## Format flag switches to text
 
 ```scrut
-$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTDIR/../jm session --format text 2>&1
+$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID HOME=/nonexistent $TESTDIR/../jm session --format text 2>&1
 Error [authentication_failed]: no token configured; set JMAP_TOKEN, --token, or token in config file
 Hint: Check your token in JMAP_TOKEN or config file
 [1]
@@ -28,7 +28,7 @@ Hint: Check your token in JMAP_TOKEN or config file
 ## JMAP_FORMAT env var switches to text
 
 ```scrut
-$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_ACCOUNT_ID JMAP_FORMAT=text $TESTDIR/../jm session 2>&1
+$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_ACCOUNT_ID HOME=/nonexistent JMAP_FORMAT=text $TESTDIR/../jm session 2>&1
 Error [authentication_failed]: no token configured; set JMAP_TOKEN, --token, or token in config file
 Hint: Check your token in JMAP_TOKEN or config file
 [1]
@@ -60,7 +60,7 @@ $ env -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID JMAP_TOKEN=env-token
 ## Custom session URL via flag
 
 ```scrut
-$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTDIR/../jm session --token test --session-url http://localhost:1/jmap 2>&1
+$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID HOME=/nonexistent $TESTDIR/../jm session --token test --session-url http://localhost:1/jmap 2>&1
 {
   "error": "authentication_failed",
 * (glob+)
@@ -82,7 +82,7 @@ $ env -u JMAP_FORMAT -u JMAP_ACCOUNT_ID JMAP_TOKEN=test JMAP_SESSION_URL=http://
 List with default flags fails on auth, not on flag parsing.
 
 ```scrut
-$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTDIR/../jm list 2>&1
+$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID HOME=/nonexistent $TESTDIR/../jm list 2>&1
 {
   "error": "authentication_failed",
 * (glob+)
@@ -92,7 +92,7 @@ $ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTD
 ## List with all flags
 
 ```scrut
-$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTDIR/../jm list -m inbox -l 10 -o 5 -u -s "sentAt asc" 2>&1
+$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID HOME=/nonexistent $TESTDIR/../jm list -m inbox -l 10 -o 5 -u -s "sentAt asc" 2>&1
 {
   "error": "authentication_failed",
 * (glob+)
@@ -102,7 +102,7 @@ $ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTD
 ## Search with all filter flags
 
 ```scrut
-$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTDIR/../jm search "test" --from alice --to bob --subject meeting --before 2026-01-15T00:00:00Z --after 2025-12-01T00:00:00Z --has-attachment -l 10 -m inbox 2>&1
+$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID HOME=/nonexistent $TESTDIR/../jm search "test" --from alice --to bob --subject meeting --before 2026-01-15T00:00:00Z --after 2025-12-01T00:00:00Z --has-attachment -l 10 -m inbox 2>&1
 {
   "error": "authentication_failed",
 * (glob+)
@@ -135,7 +135,7 @@ $ $TESTDIR/../jm list --limit 0 2>&1
 ## Read with all flags
 
 ```scrut
-$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTDIR/../jm read M123 --html --raw-headers --thread 2>&1
+$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID HOME=/nonexistent $TESTDIR/../jm read M123 --html --raw-headers --thread 2>&1
 {
   "error": "authentication_failed",
 * (glob+)
@@ -145,7 +145,7 @@ $ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTD
 ## Mailboxes with roles-only flag
 
 ```scrut
-$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTDIR/../jm mailboxes --roles-only 2>&1
+$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID HOME=/nonexistent $TESTDIR/../jm mailboxes --roles-only 2>&1
 {
   "error": "authentication_failed",
 * (glob+)
@@ -155,7 +155,7 @@ $ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTD
 ## Archive with multiple IDs
 
 ```scrut
-$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTDIR/../jm archive M1 M2 M3 2>&1
+$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID HOME=/nonexistent $TESTDIR/../jm archive M1 M2 M3 2>&1
 {
   "error": "authentication_failed",
 * (glob+)
@@ -165,7 +165,7 @@ $ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTD
 ## Spam with multiple IDs
 
 ```scrut
-$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTDIR/../jm spam M1 M2 M3 2>&1
+$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID HOME=/nonexistent $TESTDIR/../jm spam M1 M2 M3 2>&1
 {
   "error": "authentication_failed",
 * (glob+)
@@ -175,7 +175,7 @@ $ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTD
 ## Move with multiple IDs
 
 ```scrut
-$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTDIR/../jm move M1 M2 --to Receipts 2>&1
+$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID HOME=/nonexistent $TESTDIR/../jm move M1 M2 --to Receipts 2>&1
 {
   "error": "authentication_failed",
 * (glob+)

@@ -45,7 +45,7 @@ $ $TESTDIR/../jm mailboxes 2>&1
 ## Mailboxes roles-only entries all have role field
 
 ```scrut
-$ $TESTDIR/../jm mailboxes --roles-only | python3 -c 'import json,sys; data=json.load(sys.stdin); assert isinstance(data, list); assert data; assert all("role" in mb and mb["role"] for mb in data)'
+$ $TESTDIR/../jm mailboxes --roles-only --format json | python3 -c 'import json,sys; data=json.load(sys.stdin); assert isinstance(data, list); assert data; assert all("role" in mb and mb["role"] for mb in data)'
 ```
 
 ## List returns JSON with total and emails
@@ -72,7 +72,7 @@ Total: * (glob)
 ## Search with filter returns results for known sender
 
 ```scrut
-$ SENDER=$($TESTDIR/../jm list --limit 10 | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next((addr["email"] for e in d.get("emails", []) for addr in e.get("from", []) if addr.get("email")), ""))'); test -n "$SENDER" || exit 80; $TESTDIR/../jm search --from "$SENDER" --limit 1 2>&1
+$ SENDER=$($TESTDIR/../jm list --limit 10 --format json | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next((addr["email"] for e in d.get("emails", []) for addr in e.get("from", []) if addr.get("email")), ""))'); test -n "$SENDER" || exit 80; $TESTDIR/../jm search --from "$SENDER" --limit 1 2>&1
 {
   "total": *, (glob)
   "offset": 0,
@@ -83,7 +83,7 @@ $ SENDER=$($TESTDIR/../jm list --limit 10 | python3 -c 'import json,sys; d=json.
 ## Search with text query returns snippets
 
 ```scrut
-$ TERM=$($TESTDIR/../jm list --limit 10 | python3 -c 'import json,sys,re; d=json.load(sys.stdin); print(next((w.lower() for e in d.get("emails", []) for w in re.findall(r"[A-Za-z]{3,}", e.get("subject", ""))), "the"))'); test -n "$TERM" || exit 80; $TESTDIR/../jm search "$TERM" --limit 1 2>&1
+$ TERM=$($TESTDIR/../jm list --limit 10 --format json | python3 -c 'import json,sys,re; d=json.load(sys.stdin); print(next((w.lower() for e in d.get("emails", []) for w in re.findall(r"[A-Za-z]{3,}", e.get("subject", ""))), "the"))'); test -n "$TERM" || exit 80; $TESTDIR/../jm search "$TERM" --limit 1 2>&1
 {
   "total": *, (glob)
   "offset": 0,
@@ -96,7 +96,7 @@ $ TERM=$($TESTDIR/../jm list --limit 10 | python3 -c 'import json,sys,re; d=json
 ## Read known email ID returns body
 
 ```scrut
-$ EMAIL_ID=$($TESTDIR/../jm list --limit 1 | python3 -c 'import json,sys; d=json.load(sys.stdin); emails=d.get("emails", []); print(emails[0]["id"] if emails else "")'); test -n "$EMAIL_ID" || exit 80; $TESTDIR/../jm read "$EMAIL_ID" 2>&1
+$ EMAIL_ID=$($TESTDIR/../jm list --limit 1 --format json | python3 -c 'import json,sys; d=json.load(sys.stdin); emails=d.get("emails", []); print(emails[0]["id"] if emails else "")'); test -n "$EMAIL_ID" || exit 80; $TESTDIR/../jm read "$EMAIL_ID" 2>&1
 {
   "id": *, (glob)
 * (glob+)

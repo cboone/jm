@@ -5,7 +5,7 @@ Verify structured error output when things go wrong.
 ## Missing token produces structured JSON error
 
 ```scrut
-$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTDIR/../jm session 2>&1
+$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID HOME=/nonexistent $TESTDIR/../jm session 2>&1
 {
   "error": "authentication_failed",
   "message": "no token configured; set JMAP_TOKEN, --token, or token in config file",
@@ -17,7 +17,7 @@ $ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTD
 ## Missing token with text format
 
 ```scrut
-$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTDIR/../jm session --format text 2>&1
+$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID HOME=/nonexistent $TESTDIR/../jm session --format text 2>&1
 Error [authentication_failed]: no token configured; set JMAP_TOKEN, --token, or token in config file
 Hint: Check your token in JMAP_TOKEN or config file
 [1]
@@ -26,7 +26,7 @@ Hint: Check your token in JMAP_TOKEN or config file
 ## List without token
 
 ```scrut
-$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTDIR/../jm list 2>&1
+$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID HOME=/nonexistent $TESTDIR/../jm list 2>&1
 {
   "error": "authentication_failed",
   "message": "no token configured; set JMAP_TOKEN, --token, or token in config file",
@@ -38,7 +38,7 @@ $ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTD
 ## Read without token
 
 ```scrut
-$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTDIR/../jm read some-email-id 2>&1
+$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID HOME=/nonexistent $TESTDIR/../jm read some-email-id 2>&1
 {
   "error": "authentication_failed",
   "message": "no token configured; set JMAP_TOKEN, --token, or token in config file",
@@ -50,7 +50,7 @@ $ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTD
 ## Search without token
 
 ```scrut
-$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTDIR/../jm search "test query" 2>&1
+$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID HOME=/nonexistent $TESTDIR/../jm search "test query" 2>&1
 {
   "error": "authentication_failed",
   "message": "no token configured; set JMAP_TOKEN, --token, or token in config file",
@@ -62,7 +62,7 @@ $ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTD
 ## Archive without token
 
 ```scrut
-$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTDIR/../jm archive M123 2>&1
+$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID HOME=/nonexistent $TESTDIR/../jm archive M123 2>&1
 {
   "error": "authentication_failed",
   "message": "no token configured; set JMAP_TOKEN, --token, or token in config file",
@@ -74,7 +74,7 @@ $ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTD
 ## Spam without token
 
 ```scrut
-$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTDIR/../jm spam M123 2>&1
+$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID HOME=/nonexistent $TESTDIR/../jm spam M123 2>&1
 {
   "error": "authentication_failed",
   "message": "no token configured; set JMAP_TOKEN, --token, or token in config file",
@@ -86,7 +86,7 @@ $ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTD
 ## Move without token
 
 ```scrut
-$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTDIR/../jm move M123 --to Archive 2>&1
+$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID HOME=/nonexistent $TESTDIR/../jm move M123 --to Archive 2>&1
 {
   "error": "authentication_failed",
   "message": "no token configured; set JMAP_TOKEN, --token, or token in config file",
@@ -98,7 +98,7 @@ $ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTD
 ## Mailboxes without token
 
 ```scrut
-$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID $TESTDIR/../jm mailboxes 2>&1
+$ env -u JMAP_TOKEN -u JMAP_SESSION_URL -u JMAP_FORMAT -u JMAP_ACCOUNT_ID HOME=/nonexistent $TESTDIR/../jm mailboxes 2>&1
 {
   "error": "authentication_failed",
   "message": "no token configured; set JMAP_TOKEN, --token, or token in config file",
