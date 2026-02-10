@@ -5,8 +5,16 @@ import (
 	"io"
 	"sort"
 	"strings"
+	"text/tabwriter"
 
 	"github.com/cboone/jm/internal/types"
+)
+
+const (
+	// maxFromWidth is the maximum display width for the sender column in email lists.
+	maxFromWidth = 40
+	// maxSubjectWidth is the maximum display width for the subject column in email lists.
+	maxSubjectWidth = 80
 )
 
 // TextFormatter outputs data as human-readable text.
@@ -60,32 +68,61 @@ func (f *TextFormatter) formatSession(w io.Writer, s types.SessionInfo) error {
 }
 
 func (f *TextFormatter) formatMailboxes(w io.Writer, mailboxes []types.MailboxInfo) error {
+	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
 	for _, mb := range mailboxes {
 		role := ""
 		if mb.Role != "" {
-			role = fmt.Sprintf(" [%s]", mb.Role)
+			role = fmt.Sprintf("[%s]", mb.Role)
 		}
-		fmt.Fprintf(w, "%-40s %s  total:%-6d unread:%-6d %s\n",
+		fmt.Fprintf(tw, "%s\t%s\ttotal:%d\tunread:%d\t%s\n",
 			mb.Name, mb.ID, mb.TotalEmails, mb.UnreadEmails, role)
 	}
-	return nil
+	return tw.Flush()
 }
 
 func (f *TextFormatter) formatEmailList(w io.Writer, result types.EmailListResult) error {
 	fmt.Fprintf(w, "Total: %d (showing %d from offset %d)\n\n", result.Total, len(result.Emails), result.Offset)
-	for _, e := range result.Emails {
+
+	// First pass: build display strings with truncation and track max column widths.
+	type displayRow struct {
+		unread  string
+		from    string
+		subject string
+		date    string
+	}
+
+	rows := make([]displayRow, len(result.Emails))
+	maxFrom := 0
+	maxSubject := 0
+
+	for i, e := range result.Emails {
 		unread := " "
 		if e.IsUnread {
 			unread = "*"
 		}
 		from := ""
 		if len(e.From) > 0 {
-			from = formatAddr(e.From[0])
+			from = truncate(formatAddr(e.From[0]), maxFromWidth)
 		}
-		fmt.Fprintf(w, "%s %-30s  %-50s  %s\n", unread, from, e.Subject, e.ReceivedAt.Format("2006-01-02 15:04"))
-		fmt.Fprintf(w, "  ID: %s\n", e.ID)
-		if e.Snippet != "" {
-			fmt.Fprintf(w, "  ...%s\n", e.Snippet)
+		subject := truncate(e.Subject, maxSubjectWidth)
+
+		rows[i] = displayRow{unread, from, subject, e.ReceivedAt.Format("2006-01-02 15:04")}
+
+		if len(from) > maxFrom {
+			maxFrom = len(from)
+		}
+		if len(subject) > maxSubject {
+			maxSubject = len(subject)
+		}
+	}
+
+	// Second pass: print with computed widths for aligned columns.
+	fmtStr := fmt.Sprintf("%%s %%-%ds  %%-%ds  %%s\n", maxFrom, maxSubject)
+	for i, r := range rows {
+		fmt.Fprintf(w, fmtStr, r.unread, r.from, r.subject, r.date)
+		fmt.Fprintf(w, "  ID: %s\n", result.Emails[i].ID)
+		if result.Emails[i].Snippet != "" {
+			fmt.Fprintf(w, "  ...%s\n", result.Emails[i].Snippet)
 		}
 	}
 	return nil
@@ -170,4 +207,14 @@ func formatAddrs(addrs []types.Address) string {
 		parts[i] = formatAddr(a)
 	}
 	return strings.Join(parts, ", ")
+}
+
+// truncate shortens s to maxLen characters, replacing the end with "..."
+// if truncation is needed. If maxLen < 4, it returns s unchanged.
+func truncate(s string, maxLen int) string {
+	runes := []rune(s)
+	if maxLen < 4 || len(runes) <= maxLen {
+		return s
+	}
+	return string(runes[:maxLen-3]) + "..."
 }
