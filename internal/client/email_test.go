@@ -611,6 +611,188 @@ func TestSearchErrorFallsBackToInvocationIndex(t *testing.T) {
 	}
 }
 
+func TestSetFlagged_MixedUpdatedAndNotUpdated(t *testing.T) {
+	failDesc := "forbidden"
+	var captured *jmap.Request
+
+	c := &Client{
+		accountID: "test-account",
+		doFunc: func(req *jmap.Request) (*jmap.Response, error) {
+			captured = req
+			return &jmap.Response{Responses: []*jmap.Invocation{
+				{
+					Name:   "Email/set",
+					CallID: "0",
+					Args: &email.SetResponse{
+						Updated: map[jmap.ID]*email.Email{
+							"M1": {},
+						},
+						NotUpdated: map[jmap.ID]*jmap.SetError{
+							"M2": {Description: &failDesc},
+						},
+					},
+				},
+			}}, nil
+		},
+	}
+
+	succeeded, errs := c.SetFlagged([]string{"M1", "M2"})
+	if len(succeeded) != 1 || succeeded[0] != "M1" {
+		t.Fatalf("expected succeeded=[M1], got %v", succeeded)
+	}
+	if len(errs) != 1 || errs[0] != "M2: forbidden" {
+		t.Fatalf("expected errs=[M2: forbidden], got %v", errs)
+	}
+
+	if captured == nil {
+		t.Fatal("expected request to be captured")
+	}
+	if len(captured.Calls) != 1 {
+		t.Fatalf("expected 1 method call, got %d", len(captured.Calls))
+	}
+
+	setReq, ok := captured.Calls[0].Args.(*email.Set)
+	if !ok {
+		t.Fatalf("expected *email.Set args, got %T", captured.Calls[0].Args)
+	}
+	if setReq.Update == nil {
+		t.Fatal("expected update map to be set")
+	}
+	if len(setReq.Update) != 2 {
+		t.Fatalf("expected 2 update patches, got %d", len(setReq.Update))
+	}
+	for _, id := range []jmap.ID{"M1", "M2"} {
+		patch, ok := setReq.Update[id]
+		if !ok {
+			t.Fatalf("expected patch for %s", id)
+		}
+		v, ok := patch["keywords/$flagged"]
+		if !ok {
+			t.Fatalf("expected keywords/$flagged patch for %s", id)
+		}
+		flagged, ok := v.(bool)
+		if !ok || !flagged {
+			t.Fatalf("expected keywords/$flagged=true for %s, got %#v", id, v)
+		}
+	}
+}
+
+func TestSetFlagged_MethodErrorForAllIDs(t *testing.T) {
+	desc := "invalid keyword update"
+	c := &Client{
+		accountID: "test-account",
+		doFunc: func(req *jmap.Request) (*jmap.Response, error) {
+			return &jmap.Response{Responses: []*jmap.Invocation{
+				{Name: "error", CallID: "0", Args: &jmap.MethodError{Type: "invalidArguments", Description: &desc}},
+			}}, nil
+		},
+	}
+
+	succeeded, errs := c.SetFlagged([]string{"M1", "M2"})
+	if len(succeeded) != 0 {
+		t.Fatalf("expected no succeeded IDs, got %v", succeeded)
+	}
+	if len(errs) != 2 {
+		t.Fatalf("expected 2 errors, got %d (%v)", len(errs), errs)
+	}
+	if errs[0] != "M1: invalidArguments: invalid keyword update" {
+		t.Fatalf("unexpected first error: %s", errs[0])
+	}
+	if errs[1] != "M2: invalidArguments: invalid keyword update" {
+		t.Fatalf("unexpected second error: %s", errs[1])
+	}
+}
+
+func TestSetUnflagged_MixedUpdatedAndNotUpdated(t *testing.T) {
+	failDesc := "notFound"
+	var captured *jmap.Request
+
+	c := &Client{
+		accountID: "test-account",
+		doFunc: func(req *jmap.Request) (*jmap.Response, error) {
+			captured = req
+			return &jmap.Response{Responses: []*jmap.Invocation{
+				{
+					Name:   "Email/set",
+					CallID: "0",
+					Args: &email.SetResponse{
+						Updated: map[jmap.ID]*email.Email{
+							"M3": {},
+						},
+						NotUpdated: map[jmap.ID]*jmap.SetError{
+							"M4": {Description: &failDesc},
+						},
+					},
+				},
+			}}, nil
+		},
+	}
+
+	succeeded, errs := c.SetUnflagged([]string{"M3", "M4"})
+	if len(succeeded) != 1 || succeeded[0] != "M3" {
+		t.Fatalf("expected succeeded=[M3], got %v", succeeded)
+	}
+	if len(errs) != 1 || errs[0] != "M4: notFound" {
+		t.Fatalf("expected errs=[M4: notFound], got %v", errs)
+	}
+
+	if captured == nil {
+		t.Fatal("expected request to be captured")
+	}
+	if len(captured.Calls) != 1 {
+		t.Fatalf("expected 1 method call, got %d", len(captured.Calls))
+	}
+
+	setReq, ok := captured.Calls[0].Args.(*email.Set)
+	if !ok {
+		t.Fatalf("expected *email.Set args, got %T", captured.Calls[0].Args)
+	}
+	if setReq.Update == nil {
+		t.Fatal("expected update map to be set")
+	}
+	if len(setReq.Update) != 2 {
+		t.Fatalf("expected 2 update patches, got %d", len(setReq.Update))
+	}
+	for _, id := range []jmap.ID{"M3", "M4"} {
+		patch, ok := setReq.Update[id]
+		if !ok {
+			t.Fatalf("expected patch for %s", id)
+		}
+		v, ok := patch["keywords/$flagged"]
+		if !ok {
+			t.Fatalf("expected keywords/$flagged patch for %s", id)
+		}
+		if v != nil {
+			t.Fatalf("expected keywords/$flagged=nil for %s, got %#v", id, v)
+		}
+	}
+}
+
+func TestSetUnflagged_MethodErrorForAllIDs(t *testing.T) {
+	c := &Client{
+		accountID: "test-account",
+		doFunc: func(req *jmap.Request) (*jmap.Response, error) {
+			return &jmap.Response{Responses: []*jmap.Invocation{
+				{Name: "error", CallID: "0", Args: &jmap.MethodError{Type: "forbidden"}},
+			}}, nil
+		},
+	}
+
+	succeeded, errs := c.SetUnflagged([]string{"M3", "M4"})
+	if len(succeeded) != 0 {
+		t.Fatalf("expected no succeeded IDs, got %v", succeeded)
+	}
+	if len(errs) != 2 {
+		t.Fatalf("expected 2 errors, got %d (%v)", len(errs), errs)
+	}
+	if errs[0] != "M3: forbidden" {
+		t.Fatalf("unexpected first error: %s", errs[0])
+	}
+	if errs[1] != "M4: forbidden" {
+		t.Fatalf("unexpected second error: %s", errs[1])
+	}
+}
+
 // TestMarkAsReadPatchStructure verifies the patch structure for mark-as-read.
 func TestMarkAsReadPatchStructure(t *testing.T) {
 	patch := jmap.Patch{
@@ -624,6 +806,42 @@ func TestMarkAsReadPatchStructure(t *testing.T) {
 	}
 	if _, ok := patch["mailboxIds"]; ok {
 		t.Error("mark-as-read patch must not contain mailboxIds")
+	}
+}
+
+// TestFlagPatchStructure verifies the patch structure for flag (set $flagged).
+func TestFlagPatchStructure(t *testing.T) {
+	patch := jmap.Patch{
+		"keywords/$flagged": true,
+	}
+	if len(patch) != 1 {
+		t.Errorf("expected 1 patch key, got %d", len(patch))
+	}
+	if _, ok := patch["keywords/$flagged"]; !ok {
+		t.Error("expected keywords/$flagged in patch")
+	}
+	if _, ok := patch["mailboxIds"]; ok {
+		t.Error("flag patch must not contain mailboxIds")
+	}
+}
+
+// TestUnflagPatchStructure verifies the patch structure for unflag (remove $flagged).
+func TestUnflagPatchStructure(t *testing.T) {
+	patch := jmap.Patch{
+		"keywords/$flagged": nil,
+	}
+	if len(patch) != 1 {
+		t.Errorf("expected 1 patch key, got %d", len(patch))
+	}
+	val, ok := patch["keywords/$flagged"]
+	if !ok {
+		t.Error("expected keywords/$flagged in patch")
+	}
+	if val != nil {
+		t.Errorf("expected keywords/$flagged to be nil (remove), got %v", val)
+	}
+	if _, ok := patch["mailboxIds"]; ok {
+		t.Error("unflag patch must not contain mailboxIds")
 	}
 }
 
