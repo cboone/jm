@@ -16,8 +16,8 @@ the JSON output lacks machine-friendly summary fields for automation consumers.
 ### 1. Read batch size from JMAP session capabilities
 
 Add a method to `Client` that reads `MaxObjectsInSet` from the `core.Core`
-capability in the JMAP session. Fall back to 50 if the capability is unavailable
-or the value is 0.
+capability in the JMAP session. Fall back to 50 when the client/session is nil,
+the capability is unavailable, or the value is 0.
 
 **File**: `internal/client/client.go`
 
@@ -25,9 +25,12 @@ or the value is 0.
 import "git.sr.ht/~rockorager/go-jmap/core"
 
 func (c *Client) maxBatchSize() int {
-    if cap, ok := c.jmap.Session.Capabilities[jmap.CoreURI]; ok {
-        if core, ok := cap.(*core.Core); ok && core.MaxObjectsInSet > 0 {
-            return int(core.MaxObjectsInSet)
+    if c == nil || c.jmap == nil || c.jmap.Session == nil {
+        return defaultBatchSize
+    }
+    if capability, ok := c.jmap.Session.Capabilities[jmap.CoreURI]; ok {
+        if coreCap, ok := capability.(*core.Core); ok && coreCap != nil && coreCap.MaxObjectsInSet > 0 {
+            return int(coreCap.MaxObjectsInSet)
         }
     }
     return defaultBatchSize
@@ -157,15 +160,17 @@ type MoveResult struct {
 }
 ```
 
-These are computed in each command handler from the values already available:
+These are computed in each command handler from the values already available.
+`Processed` represents attempted IDs (`len(succeeded) + len(errors)`), which is
+currently equal to `Matched` because each input ID is attempted once.
 
 ```go
 result := types.MoveResult{
-    Matched:  len(args),
-    Processed: len(succeeded),
-    Failed:   len(errors),
-    Archived: succeeded,
-    Errors:   errors,
+    Matched:   len(args),
+    Processed: len(succeeded) + len(errors),
+    Failed:    len(errors),
+    Archived:  succeeded,
+    Errors:    errors,
     // ...
 }
 ```
@@ -210,15 +215,44 @@ Add tests using the existing `doFunc` mock pattern (already used in
 - **`TestBatchSetEmails_MixedPerIDErrors`**: A batch where some IDs succeed and
   some return `NotUpdated` errors. (Existing tests cover this for `SetFlagged`
   and `SetUnflagged`; extend to the shared helper.)
-- **`TestMaxBatchSize_FromSession`**: Unit test for `maxBatchSize()` with
-  various capability states.
 
 **File**: `internal/client/client_test.go`
 
-- **`TestMaxBatchSize_*`**: Tests for the `maxBatchSize()` helper.
+- **`TestMaxBatchSize_*`**: Unit tests for `maxBatchSize()` covering nil
+  client/session, missing capability, zero value, and valid `MaxObjectsInSet`.
 
 Update existing tests that assert on `batchSize` constant
 (`TestBatchSizeConstant`) to use `defaultBatchSize`.
+
+**File**: `internal/output/text_test.go`
+
+- Update/add `MoveResult` formatter tests to assert the summary line is printed:
+  `Matched: X, Processed: Y, Failed: Z`.
+
+**File**: `internal/types/types_test.go`
+
+- Update/add `MoveResult` JSON tests to assert `matched`, `processed`, and
+  `failed` are serialized with expected values.
+
+**File**: `tests/live.md`
+
+- Update live command assertions that check bulk-op JSON output so they continue
+  to pass after adding `matched`, `processed`, and `failed` fields.
+
+### 6. Update docs for summary fields
+
+**Files**:
+- `docs/CLI-REFERENCE.md`
+- `README.md`
+
+Update bulk-operation documentation and examples to include the new summary
+fields:
+
+- JSON examples for `archive`, `spam`, `mark-read`, `flag`, `unflag`, `move`
+  include `matched`, `processed`, `failed`.
+- Text examples include the summary line:
+  `Matched: X, Processed: Y, Failed: Z`.
+- `MoveResult` schema table documents the three new fields and semantics.
 
 ### Files Modified (summary)
 
@@ -236,10 +270,16 @@ Update existing tests that assert on `batchSize` constant
 | `cmd/unflag.go` | Populate summary fields |
 | `internal/client/email_test.go` | Add batch tests, update constant test |
 | `internal/client/client_test.go` | Add `maxBatchSize` tests |
+| `internal/output/text_test.go` | Assert summary line in text formatter output |
+| `internal/types/types_test.go` | Assert summary fields in `MoveResult` JSON |
+| `tests/live.md` | Update live assertions for new summary fields |
+| `docs/CLI-REFERENCE.md` | Document new summary fields and examples |
+| `README.md` | Update output examples for bulk operations |
 
 ## Verification
 
 1. **Unit tests**: `go test ./...` -- all new and existing tests pass
 2. **Build**: `make build` succeeds
-3. **CLI integration tests**: `make test-cli` passes (help text expectations unchanged)
-4. **Manual smoke test** (if `JMAP_TOKEN` available): run `jm archive <id1> <id2>` and verify JSON output includes `matched`, `processed`, `failed` fields
+3. **CLI integration tests**: `make test-cli` passes
+4. **Live CLI tests** (opt-in): `JMAP_LIVE_TESTS=1 make test-cli-live` passes
+5. **Manual smoke test** (if `JMAP_TOKEN` available): run `jm archive <id1> <id2>` and verify JSON output includes `matched`, `processed`, `failed` fields and text output includes the summary line
