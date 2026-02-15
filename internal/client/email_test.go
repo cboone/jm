@@ -420,13 +420,15 @@ func TestBatchSetEmails_UsesServerMaxObjectsInSet(t *testing.T) {
 }
 
 func TestBatchSetEmails_FallsBackToDefault(t *testing.T) {
-	var captured *jmap.Request
+	var requestCount int
+	var batchSizes []int
 
 	c := &Client{
 		accountID: "test-account",
 		doFunc: func(req *jmap.Request) (*jmap.Response, error) {
-			captured = req
+			requestCount++
 			setReq := req.Calls[0].Args.(*email.Set)
+			batchSizes = append(batchSizes, len(setReq.Update))
 			updated := make(map[jmap.ID]*email.Email, len(setReq.Update))
 			for id := range setReq.Update {
 				updated[id] = &email.Email{}
@@ -437,8 +439,7 @@ func TestBatchSetEmails_FallsBackToDefault(t *testing.T) {
 		},
 	}
 
-	// Send 5 IDs; without a session, default batch size (50) should handle all in 1 batch.
-	ids := make([]string, 5)
+	ids := make([]string, defaultBatchSize+1)
 	for i := range ids {
 		ids[i] = fmt.Sprintf("M%d", i+1)
 	}
@@ -446,11 +447,14 @@ func TestBatchSetEmails_FallsBackToDefault(t *testing.T) {
 		return jmap.Patch{"keywords/$seen": true}
 	})
 
-	if len(captured.Calls) != 1 {
-		t.Fatalf("expected 1 batch (default size), got %d calls", len(captured.Calls))
+	if requestCount != 2 {
+		t.Fatalf("expected 2 batches at default size, got %d", requestCount)
 	}
-	if len(succeeded) != 5 {
-		t.Fatalf("expected 5 succeeded, got %d", len(succeeded))
+	if len(batchSizes) != 2 || batchSizes[0] != defaultBatchSize || batchSizes[1] != 1 {
+		t.Fatalf("expected batch sizes [%d 1], got %v", defaultBatchSize, batchSizes)
+	}
+	if len(succeeded) != defaultBatchSize+1 {
+		t.Fatalf("expected %d succeeded, got %d", defaultBatchSize+1, len(succeeded))
 	}
 	if len(errs) != 0 {
 		t.Fatalf("expected 0 errors, got %d", len(errs))

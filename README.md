@@ -159,6 +159,27 @@ Total: 42 (showing 25 from offset 0)
   ID: M-email-id
 ```
 
+**Bulk operation JSON** (`archive`, `spam`, `mark-read`, `flag`, `unflag`, `move`):
+
+```json
+{
+  "matched": 3,
+  "processed": 3,
+  "failed": 1,
+  "archived": ["M1", "M2"],
+  "errors": ["M3: not found"]
+}
+```
+
+**Bulk operation text** (`--format text`):
+
+```text
+Matched: 3, Processed: 3, Failed: 1
+Archived: M1, M2
+Errors:
+  - M3: not found
+```
+
 See [docs/CLI-REFERENCE.md#output-schemas](docs/CLI-REFERENCE.md#output-schemas) for complete schema documentation.
 
 ## Error Handling
