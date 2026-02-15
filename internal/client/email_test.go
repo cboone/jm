@@ -583,6 +583,40 @@ func TestBatchSetEmails_MixedPerIDErrors(t *testing.T) {
 	}
 }
 
+func TestBatchSetEmails_UnaccountedID(t *testing.T) {
+	c := &Client{
+		accountID: "test-account",
+		doFunc: func(req *jmap.Request) (*jmap.Response, error) {
+			return &jmap.Response{Responses: []*jmap.Invocation{
+				{
+					Name:   "Email/set",
+					CallID: "0",
+					Args: &email.SetResponse{
+						Updated: map[jmap.ID]*email.Email{
+							"M1": {},
+						},
+						NotUpdated: map[jmap.ID]*jmap.SetError{},
+					},
+				},
+			}}, nil
+		},
+	}
+
+	succeeded, errs := c.batchSetEmails([]string{"M1", "M2"}, func(_ string) jmap.Patch {
+		return jmap.Patch{"keywords/$seen": true}
+	})
+
+	if len(succeeded) != 1 || succeeded[0] != "M1" {
+		t.Fatalf("expected succeeded=[M1], got %v", succeeded)
+	}
+	if len(errs) != 1 {
+		t.Fatalf("expected 1 error for unaccounted ID, got %d: %v", len(errs), errs)
+	}
+	if !strings.Contains(errs[0], "M2") || !strings.Contains(errs[0], "no status returned") {
+		t.Fatalf("expected error about M2 with no status, got: %s", errs[0])
+	}
+}
+
 // --- summaryProperties and detailProperties tests ---
 
 func TestSummaryPropertiesContainsRequired(t *testing.T) {

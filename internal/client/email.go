@@ -70,6 +70,8 @@ func (c *Client) batchSetEmails(emailIDs []string, patchFn func(string) jmap.Pat
 							desc = *setErr.Description
 						}
 						errors = append(errors, fmt.Sprintf("%s: %s", idStr, desc))
+					} else {
+						errors = append(errors, fmt.Sprintf("%s: no status returned by server", idStr))
 					}
 				}
 			case *jmap.MethodError:
