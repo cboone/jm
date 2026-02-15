@@ -189,7 +189,10 @@ func TestEmailDetail_JSON_NullSentAt(t *testing.T) {
 
 func TestMoveResult_JSON_Archive(t *testing.T) {
 	r := MoveResult{
-		Archived: []string{"M1", "M2"},
+		Matched:   2,
+		Processed: 2,
+		Failed:    0,
+		Archived:  []string{"M1", "M2"},
 		Destination: &DestinationInfo{
 			ID: "mb-archive", Name: "Archive",
 		},
@@ -206,6 +209,15 @@ func TestMoveResult_JSON_Archive(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if result["matched"] != float64(2) {
+		t.Errorf("expected matched=2, got %v", result["matched"])
+	}
+	if result["processed"] != float64(2) {
+		t.Errorf("expected processed=2, got %v", result["processed"])
+	}
+	if result["failed"] != float64(0) {
+		t.Errorf("expected failed=0, got %v", result["failed"])
+	}
 	archived, ok := result["archived"].([]interface{})
 	if !ok {
 		t.Fatal("expected archived array")
@@ -306,8 +318,11 @@ func TestMoveResult_JSON_Unflagged(t *testing.T) {
 
 func TestMoveResult_JSON_WithErrors(t *testing.T) {
 	r := MoveResult{
-		Moved:  []string{"M1"},
-		Errors: []string{"M2: not found"},
+		Matched:   2,
+		Processed: 2,
+		Failed:    1,
+		Moved:     []string{"M1"},
+		Errors:    []string{"M2: not found"},
 	}
 
 	data, err := json.Marshal(r)
@@ -319,6 +334,15 @@ func TestMoveResult_JSON_WithErrors(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if result["matched"] != float64(2) {
+		t.Errorf("expected matched=2, got %v", result["matched"])
+	}
+	if result["processed"] != float64(2) {
+		t.Errorf("expected processed=2, got %v", result["processed"])
+	}
+	if result["failed"] != float64(1) {
+		t.Errorf("expected failed=1, got %v", result["failed"])
+	}
 	errors, ok := result["errors"].([]interface{})
 	if !ok {
 		t.Fatal("expected errors array")

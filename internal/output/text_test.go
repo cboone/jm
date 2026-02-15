@@ -274,7 +274,10 @@ func TestTextFormatter_MoveResult(t *testing.T) {
 	var buf bytes.Buffer
 
 	result := types.MoveResult{
-		Archived: []string{"M1", "M2"},
+		Matched:   2,
+		Processed: 2,
+		Failed:    0,
+		Archived:  []string{"M1", "M2"},
 		Destination: &types.DestinationInfo{
 			ID: "mb-archive", Name: "Archive",
 		},
@@ -286,6 +289,9 @@ func TestTextFormatter_MoveResult(t *testing.T) {
 	}
 
 	out := buf.String()
+	if !strings.Contains(out, "Matched: 2, Processed: 2, Failed: 0") {
+		t.Errorf("expected summary line, got: %s", out)
+	}
 	if !strings.Contains(out, "Archived: M1, M2") {
 		t.Errorf("expected archived IDs, got: %s", out)
 	}
@@ -299,8 +305,11 @@ func TestTextFormatter_MoveResultWithErrors(t *testing.T) {
 	var buf bytes.Buffer
 
 	result := types.MoveResult{
-		Moved:  []string{"M1"},
-		Errors: []string{"M2: not found"},
+		Matched:   2,
+		Processed: 2,
+		Failed:    1,
+		Moved:     []string{"M1"},
+		Errors:    []string{"M2: not found"},
 		Destination: &types.DestinationInfo{
 			ID: "mb-receipts", Name: "Receipts",
 		},
@@ -311,6 +320,9 @@ func TestTextFormatter_MoveResultWithErrors(t *testing.T) {
 	}
 
 	out := buf.String()
+	if !strings.Contains(out, "Matched: 2, Processed: 2, Failed: 1") {
+		t.Errorf("expected summary line, got: %s", out)
+	}
 	if !strings.Contains(out, "Moved: M1") {
 		t.Errorf("expected moved IDs, got: %s", out)
 	}

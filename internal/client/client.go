@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"git.sr.ht/~rockorager/go-jmap"
+	"git.sr.ht/~rockorager/go-jmap/core"
 	"git.sr.ht/~rockorager/go-jmap/mail"
 	"git.sr.ht/~rockorager/go-jmap/mail/mailbox"
 
@@ -19,6 +20,7 @@ import (
 var ErrNotFound = fmt.Errorf("not found")
 
 const maxRetries = 3
+const defaultBatchSize = 50
 
 // Client wraps the go-jmap client with convenience methods and safety guardrails.
 type Client struct {
@@ -76,6 +78,20 @@ func (c *Client) Do(req *jmap.Request) (*jmap.Response, error) {
 		return c.doFunc(req)
 	}
 	return c.jmap.Do(req)
+}
+
+// maxBatchSize returns the server's MaxObjectsInSet from the JMAP session
+// capabilities, falling back to defaultBatchSize when unavailable.
+func (c *Client) maxBatchSize() int {
+	if c == nil || c.jmap == nil || c.jmap.Session == nil {
+		return defaultBatchSize
+	}
+	if capability, ok := c.jmap.Session.Capabilities[jmap.CoreURI]; ok {
+		if coreCap, ok := capability.(*core.Core); ok && coreCap != nil && coreCap.MaxObjectsInSet > 0 {
+			return int(coreCap.MaxObjectsInSet)
+		}
+	}
+	return defaultBatchSize
 }
 
 // SessionInfo returns a simplified view of the current session.

@@ -104,6 +104,9 @@ type AccountInfo struct {
 
 // MoveResult reports the outcome of a move/archive/spam/mark-read/flag/unflag operation.
 type MoveResult struct {
+	Matched      int              `json:"matched"`
+	Processed    int              `json:"processed"`
+	Failed       int              `json:"failed"`
 	Moved        []string         `json:"moved,omitempty"`
 	Archived     []string         `json:"archived,omitempty"`
 	MarkedSpam   []string         `json:"marked_as_spam,omitempty"`

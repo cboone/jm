@@ -22,6 +22,9 @@ var unflagCmd = &cobra.Command{
 		succeeded, errors := c.SetUnflagged(args)
 
 		result := types.MoveResult{
+			Matched:   len(args),
+			Processed: len(succeeded) + len(errors),
+			Failed:    len(errors),
 			Unflagged: succeeded,
 			Errors:    errors,
 		}

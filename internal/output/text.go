@@ -173,6 +173,7 @@ func (f *TextFormatter) formatThreadView(w io.Writer, tv types.ThreadView) error
 }
 
 func (f *TextFormatter) formatMoveResult(w io.Writer, r types.MoveResult) error {
+	fmt.Fprintf(w, "Matched: %d, Processed: %d, Failed: %d\n", r.Matched, r.Processed, r.Failed)
 	if len(r.Archived) > 0 {
 		fmt.Fprintf(w, "Archived: %s\n", strings.Join(r.Archived, ", "))
 	}

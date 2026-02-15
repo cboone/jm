@@ -391,6 +391,9 @@ jm archive <email-id> [email-id...]
 
 ```json
 {
+  "matched": 2,
+  "processed": 2,
+  "failed": 0,
   "archived": ["M-email-id-1", "M-email-id-2"],
   "destination": {
     "id": "mb-archive-id",
@@ -403,6 +406,7 @@ jm archive <email-id> [email-id...]
 **Text output:**
 
 ```text
+Matched: 2, Processed: 2, Failed: 0
 Archived: M-email-id-1, M-email-id-2
 Destination: Archive (mb-archive-id)
 ```
@@ -425,6 +429,9 @@ jm spam <email-id> [email-id...]
 
 ```json
 {
+  "matched": 1,
+  "processed": 1,
+  "failed": 0,
   "marked_as_spam": ["M-email-id-1"],
   "destination": {
     "id": "mb-junk-id",
@@ -437,6 +444,7 @@ jm spam <email-id> [email-id...]
 **Text output:**
 
 ```text
+Matched: 1, Processed: 1, Failed: 0
 Marked as spam: M-email-id-1
 Destination: Junk Mail (mb-junk-id)
 ```
@@ -459,6 +467,9 @@ jm mark-read <email-id> [email-id...]
 
 ```json
 {
+  "matched": 2,
+  "processed": 2,
+  "failed": 0,
   "marked_as_read": ["M-email-id-1", "M-email-id-2"],
   "errors": []
 }
@@ -467,6 +478,7 @@ jm mark-read <email-id> [email-id...]
 **Text output:**
 
 ```text
+Matched: 2, Processed: 2, Failed: 0
 Marked as read: M-email-id-1, M-email-id-2
 ```
 
@@ -488,6 +500,9 @@ jm flag <email-id> [email-id...]
 
 ```json
 {
+  "matched": 2,
+  "processed": 2,
+  "failed": 0,
   "flagged": ["M-email-id-1", "M-email-id-2"],
   "errors": []
 }
@@ -496,6 +511,7 @@ jm flag <email-id> [email-id...]
 **Text output:**
 
 ```text
+Matched: 2, Processed: 2, Failed: 0
 Flagged: M-email-id-1, M-email-id-2
 ```
 
@@ -517,6 +533,9 @@ jm unflag <email-id> [email-id...]
 
 ```json
 {
+  "matched": 2,
+  "processed": 2,
+  "failed": 0,
   "unflagged": ["M-email-id-1", "M-email-id-2"],
   "errors": []
 }
@@ -525,6 +544,7 @@ jm unflag <email-id> [email-id...]
 **Text output:**
 
 ```text
+Matched: 2, Processed: 2, Failed: 0
 Unflagged: M-email-id-1, M-email-id-2
 ```
 
@@ -552,6 +572,9 @@ jm move <email-id> [email-id...] --to <mailbox>
 
 ```json
 {
+  "matched": 1,
+  "processed": 1,
+  "failed": 0,
   "moved": ["M-email-id-1"],
   "destination": {
     "id": "mb-receipts-id",
@@ -564,6 +587,7 @@ jm move <email-id> [email-id...] --to <mailbox>
 **Text output:**
 
 ```text
+Matched: 1, Processed: 1, Failed: 0
 Moved: M-email-id-1
 Destination: Receipts (mb-receipts-id)
 ```
@@ -711,16 +735,19 @@ Returned by the `session` command.
 
 Returned by `archive`, `spam`, `mark-read`, `flag`, `unflag`, and `move` commands. Only the relevant action field is populated.
 
-| Field            | Type            | Notes                                |
-| ---------------- | --------------- | ------------------------------------ |
-| `moved`          | string[]        | Omitted unless `move` command        |
-| `archived`       | string[]        | Omitted unless `archive` command     |
-| `marked_as_spam` | string[]        | Omitted unless `spam` command        |
-| `marked_as_read` | string[]        | Omitted unless `mark-read` command   |
-| `flagged`        | string[]        | Omitted unless `flag` command        |
-| `unflagged`      | string[]        | Omitted unless `unflag` command      |
-| `destination`    | DestinationInfo | Omitted on total failure             |
-| `errors`         | string[]        | Empty array on full success          |
+| Field            | Type            | Notes                                                     |
+| ---------------- | --------------- | --------------------------------------------------------- |
+| `matched`        | number          | Number of input IDs                                       |
+| `processed`      | number          | Number of IDs attempted (succeeded + failed)              |
+| `failed`         | number          | Number of IDs that failed                                 |
+| `moved`          | string[]        | Omitted unless `move` command                             |
+| `archived`       | string[]        | Omitted unless `archive` command                          |
+| `marked_as_spam` | string[]        | Omitted unless `spam` command                             |
+| `marked_as_read` | string[]        | Omitted unless `mark-read` command                        |
+| `flagged`        | string[]        | Omitted unless `flag` command                             |
+| `unflagged`      | string[]        | Omitted unless `unflag` command                           |
+| `destination`    | DestinationInfo | Omitted on total failure                                  |
+| `errors`         | string[]        | Empty array on full success                               |
 
 ### DestinationInfo
 

@@ -22,6 +22,9 @@ var markReadCmd = &cobra.Command{
 		succeeded, errors := c.MarkAsRead(args)
 
 		result := types.MoveResult{
+			Matched:      len(args),
+			Processed:    len(succeeded) + len(errors),
+			Failed:       len(errors),
 			MarkedAsRead: succeeded,
 			Errors:       errors,
 		}

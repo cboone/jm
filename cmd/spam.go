@@ -28,6 +28,9 @@ var spamCmd = &cobra.Command{
 		succeeded, errors := c.MarkAsSpam(args, junkMB.ID)
 
 		result := types.MoveResult{
+			Matched:    len(args),
+			Processed:  len(succeeded) + len(errors),
+			Failed:     len(errors),
 			MarkedSpam: succeeded,
 			Errors:     errors,
 			Destination: &types.DestinationInfo{
