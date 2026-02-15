@@ -22,8 +22,11 @@ var flagCmd = &cobra.Command{
 		succeeded, errors := c.SetFlagged(args)
 
 		result := types.MoveResult{
-			Flagged: succeeded,
-			Errors:  errors,
+			Matched:   len(args),
+			Processed: len(succeeded) + len(errors),
+			Failed:    len(errors),
+			Flagged:   succeeded,
+			Errors:    errors,
 		}
 
 		if err := formatter().Format(os.Stdout, result); err != nil {

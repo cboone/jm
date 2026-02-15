@@ -28,8 +28,11 @@ var archiveCmd = &cobra.Command{
 		succeeded, errors := c.MoveEmails(args, archiveMB.ID)
 
 		result := types.MoveResult{
-			Archived: succeeded,
-			Errors:   errors,
+			Matched:   len(args),
+			Processed: len(succeeded) + len(errors),
+			Failed:    len(errors),
+			Archived:  succeeded,
+			Errors:    errors,
 			Destination: &types.DestinationInfo{
 				ID:   string(archiveMB.ID),
 				Name: archiveMB.Name,

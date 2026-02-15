@@ -7,6 +7,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"git.sr.ht/~rockorager/go-jmap"
+	"git.sr.ht/~rockorager/go-jmap/core"
 )
 
 type roundTripFunc func(*http.Request) (*http.Response, error)
@@ -145,5 +148,71 @@ func TestRetryTransport_FailsForNonRewindableBody(t *testing.T) {
 	}
 	if calls != 1 {
 		t.Fatalf("expected exactly 1 transport call, got %d", calls)
+	}
+}
+
+// --- maxBatchSize tests ---
+
+func TestMaxBatchSize_NilClient(t *testing.T) {
+	var c *Client
+	if got := c.maxBatchSize(); got != defaultBatchSize {
+		t.Errorf("expected %d, got %d", defaultBatchSize, got)
+	}
+}
+
+func TestMaxBatchSize_NilJmapClient(t *testing.T) {
+	c := &Client{}
+	if got := c.maxBatchSize(); got != defaultBatchSize {
+		t.Errorf("expected %d, got %d", defaultBatchSize, got)
+	}
+}
+
+func TestMaxBatchSize_NilSession(t *testing.T) {
+	c := &Client{jmap: &jmap.Client{}}
+	if got := c.maxBatchSize(); got != defaultBatchSize {
+		t.Errorf("expected %d, got %d", defaultBatchSize, got)
+	}
+}
+
+func TestMaxBatchSize_MissingCapability(t *testing.T) {
+	c := &Client{jmap: &jmap.Client{
+		Session: &jmap.Session{
+			Capabilities: map[jmap.URI]jmap.Capability{},
+		},
+	}}
+	if got := c.maxBatchSize(); got != defaultBatchSize {
+		t.Errorf("expected %d, got %d", defaultBatchSize, got)
+	}
+}
+
+func TestMaxBatchSize_ZeroValue(t *testing.T) {
+	c := &Client{jmap: &jmap.Client{
+		Session: &jmap.Session{
+			Capabilities: map[jmap.URI]jmap.Capability{
+				jmap.CoreURI: &core.Core{MaxObjectsInSet: 0},
+			},
+		},
+	}}
+	if got := c.maxBatchSize(); got != defaultBatchSize {
+		t.Errorf("expected %d, got %d", defaultBatchSize, got)
+	}
+}
+
+func TestMaxBatchSize_ValidValue(t *testing.T) {
+	c := &Client{jmap: &jmap.Client{
+		Session: &jmap.Session{
+			Capabilities: map[jmap.URI]jmap.Capability{
+				jmap.CoreURI: &core.Core{MaxObjectsInSet: 100},
+			},
+		},
+	}}
+	if got := c.maxBatchSize(); got != 100 {
+		t.Errorf("expected 100, got %d", got)
+	}
+}
+
+func TestDefaultBatchSizeConstant(t *testing.T) {
+	if defaultBatchSize != 50 {
+		t.Errorf("expected defaultBatchSize=50, got %d", defaultBatchSize)
 	}
 }

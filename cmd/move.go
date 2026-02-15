@@ -38,8 +38,11 @@ Moving to Trash or Deleted Items is not permitted.`,
 		succeeded, errors := c.MoveEmails(args, targetMB.ID)
 
 		result := types.MoveResult{
-			Moved:  succeeded,
-			Errors: errors,
+			Matched:   len(args),
+			Processed: len(succeeded) + len(errors),
+			Failed:    len(errors),
+			Moved:     succeeded,
+			Errors:    errors,
 			Destination: &types.DestinationInfo{
 				ID:   string(targetMB.ID),
 				Name: targetMB.Name,

@@ -1,11 +1,13 @@
 package client
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
 
 	"git.sr.ht/~rockorager/go-jmap"
+	"git.sr.ht/~rockorager/go-jmap/core"
 	"git.sr.ht/~rockorager/go-jmap/mail"
 	"git.sr.ht/~rockorager/go-jmap/mail/email"
 	"git.sr.ht/~rockorager/go-jmap/mail/mailbox"
@@ -374,11 +376,206 @@ func TestSingleThreadEntry(t *testing.T) {
 	}
 }
 
-// --- batchSize constant test ---
+// --- batchSetEmails tests ---
 
-func TestBatchSizeConstant(t *testing.T) {
-	if batchSize != 50 {
-		t.Errorf("expected batchSize=50, got %d", batchSize)
+func TestBatchSetEmails_UsesServerMaxObjectsInSet(t *testing.T) {
+	var requestCount int
+
+	c := &Client{
+		accountID: "test-account",
+		jmap: &jmap.Client{
+			Session: &jmap.Session{
+				Capabilities: map[jmap.URI]jmap.Capability{
+					jmap.CoreURI: &core.Core{MaxObjectsInSet: 2},
+				},
+			},
+		},
+		doFunc: func(req *jmap.Request) (*jmap.Response, error) {
+			requestCount++
+			setReq := req.Calls[0].Args.(*email.Set)
+			updated := make(map[jmap.ID]*email.Email, len(setReq.Update))
+			for id := range setReq.Update {
+				updated[id] = &email.Email{}
+			}
+			return &jmap.Response{Responses: []*jmap.Invocation{
+				{Name: "Email/set", CallID: "0", Args: &email.SetResponse{Updated: updated}},
+			}}, nil
+		},
+	}
+
+	ids := []string{"M1", "M2", "M3", "M4", "M5"}
+	succeeded, errs := c.batchSetEmails(ids, func(_ string) jmap.Patch {
+		return jmap.Patch{"keywords/$seen": true}
+	})
+
+	if requestCount != 3 {
+		t.Fatalf("expected 3 batches, got %d", requestCount)
+	}
+	if len(succeeded) != 5 {
+		t.Fatalf("expected 5 succeeded, got %d", len(succeeded))
+	}
+	if len(errs) != 0 {
+		t.Fatalf("expected 0 errors, got %d", len(errs))
+	}
+}
+
+func TestBatchSetEmails_FallsBackToDefault(t *testing.T) {
+	var captured *jmap.Request
+
+	c := &Client{
+		accountID: "test-account",
+		doFunc: func(req *jmap.Request) (*jmap.Response, error) {
+			captured = req
+			setReq := req.Calls[0].Args.(*email.Set)
+			updated := make(map[jmap.ID]*email.Email, len(setReq.Update))
+			for id := range setReq.Update {
+				updated[id] = &email.Email{}
+			}
+			return &jmap.Response{Responses: []*jmap.Invocation{
+				{Name: "Email/set", CallID: "0", Args: &email.SetResponse{Updated: updated}},
+			}}, nil
+		},
+	}
+
+	// Send 5 IDs; without a session, default batch size (50) should handle all in 1 batch.
+	ids := make([]string, 5)
+	for i := range ids {
+		ids[i] = fmt.Sprintf("M%d", i+1)
+	}
+	succeeded, errs := c.batchSetEmails(ids, func(_ string) jmap.Patch {
+		return jmap.Patch{"keywords/$seen": true}
+	})
+
+	if len(captured.Calls) != 1 {
+		t.Fatalf("expected 1 batch (default size), got %d calls", len(captured.Calls))
+	}
+	if len(succeeded) != 5 {
+		t.Fatalf("expected 5 succeeded, got %d", len(succeeded))
+	}
+	if len(errs) != 0 {
+		t.Fatalf("expected 0 errors, got %d", len(errs))
+	}
+}
+
+func TestBatchSetEmails_LargeBatch(t *testing.T) {
+	var requestCount int
+
+	c := &Client{
+		accountID: "test-account",
+		jmap: &jmap.Client{
+			Session: &jmap.Session{
+				Capabilities: map[jmap.URI]jmap.Capability{
+					jmap.CoreURI: &core.Core{MaxObjectsInSet: 50},
+				},
+			},
+		},
+		doFunc: func(req *jmap.Request) (*jmap.Response, error) {
+			requestCount++
+			setReq := req.Calls[0].Args.(*email.Set)
+			updated := make(map[jmap.ID]*email.Email, len(setReq.Update))
+			for id := range setReq.Update {
+				updated[id] = &email.Email{}
+			}
+			return &jmap.Response{Responses: []*jmap.Invocation{
+				{Name: "Email/set", CallID: "0", Args: &email.SetResponse{Updated: updated}},
+			}}, nil
+		},
+	}
+
+	ids := make([]string, 225)
+	for i := range ids {
+		ids[i] = fmt.Sprintf("M%d", i+1)
+	}
+	succeeded, errs := c.batchSetEmails(ids, func(_ string) jmap.Patch {
+		return jmap.Patch{"keywords/$seen": true}
+	})
+
+	if requestCount != 5 { // 50+50+50+50+25
+		t.Fatalf("expected 5 batches for 225 IDs at size 50, got %d", requestCount)
+	}
+	if len(succeeded) != 225 {
+		t.Fatalf("expected 225 succeeded, got %d", len(succeeded))
+	}
+	if len(errs) != 0 {
+		t.Fatalf("expected 0 errors, got %d", len(errs))
+	}
+}
+
+func TestBatchSetEmails_PartialBatchFailure(t *testing.T) {
+	var callNum int
+
+	c := &Client{
+		accountID: "test-account",
+		jmap: &jmap.Client{
+			Session: &jmap.Session{
+				Capabilities: map[jmap.URI]jmap.Capability{
+					jmap.CoreURI: &core.Core{MaxObjectsInSet: 2},
+				},
+			},
+		},
+		doFunc: func(req *jmap.Request) (*jmap.Response, error) {
+			callNum++
+			if callNum == 2 {
+				return nil, fmt.Errorf("network error")
+			}
+			setReq := req.Calls[0].Args.(*email.Set)
+			updated := make(map[jmap.ID]*email.Email, len(setReq.Update))
+			for id := range setReq.Update {
+				updated[id] = &email.Email{}
+			}
+			return &jmap.Response{Responses: []*jmap.Invocation{
+				{Name: "Email/set", CallID: "0", Args: &email.SetResponse{Updated: updated}},
+			}}, nil
+		},
+	}
+
+	ids := []string{"M1", "M2", "M3", "M4", "M5"}
+	succeeded, errs := c.batchSetEmails(ids, func(_ string) jmap.Patch {
+		return jmap.Patch{"keywords/$seen": true}
+	})
+
+	// Batch 1: M1, M2 -> succeed. Batch 2: M3, M4 -> fail. Batch 3: M5 -> succeed.
+	if len(succeeded) != 3 {
+		t.Fatalf("expected 3 succeeded, got %d: %v", len(succeeded), succeeded)
+	}
+	if len(errs) != 2 {
+		t.Fatalf("expected 2 errors, got %d: %v", len(errs), errs)
+	}
+}
+
+func TestBatchSetEmails_MixedPerIDErrors(t *testing.T) {
+	failDesc := "not found"
+
+	c := &Client{
+		accountID: "test-account",
+		doFunc: func(req *jmap.Request) (*jmap.Response, error) {
+			return &jmap.Response{Responses: []*jmap.Invocation{
+				{
+					Name:   "Email/set",
+					CallID: "0",
+					Args: &email.SetResponse{
+						Updated: map[jmap.ID]*email.Email{
+							"M1": {},
+							"M3": {},
+						},
+						NotUpdated: map[jmap.ID]*jmap.SetError{
+							"M2": {Description: &failDesc},
+						},
+					},
+				},
+			}}, nil
+		},
+	}
+
+	succeeded, errs := c.batchSetEmails([]string{"M1", "M2", "M3"}, func(_ string) jmap.Patch {
+		return jmap.Patch{"keywords/$seen": true}
+	})
+
+	if len(succeeded) != 2 {
+		t.Fatalf("expected 2 succeeded, got %d: %v", len(succeeded), succeeded)
+	}
+	if len(errs) != 1 || errs[0] != "M2: not found" {
+		t.Fatalf("expected 1 error 'M2: not found', got %v", errs)
 	}
 }
 

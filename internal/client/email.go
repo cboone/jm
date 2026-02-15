@@ -24,7 +24,63 @@ func (m *searchSnippetGet) Name() string { return "SearchSnippet/get" }
 
 func (m *searchSnippetGet) Requires() []jmap.URI { return []jmap.URI{mail.URI} }
 
-const batchSize = 50
+// batchSetEmails executes Email/set in server-aware batches.
+// patchFn builds the jmap.Patch for a single email ID.
+func (c *Client) batchSetEmails(emailIDs []string, patchFn func(string) jmap.Patch) (succeeded, errors []string) {
+	size := c.maxBatchSize()
+	succeeded = []string{}
+	errors = []string{}
+
+	for start := 0; start < len(emailIDs); start += size {
+		end := start + size
+		if end > len(emailIDs) {
+			end = len(emailIDs)
+		}
+		batch := emailIDs[start:end]
+
+		updates := make(map[jmap.ID]jmap.Patch, len(batch))
+		for _, id := range batch {
+			updates[jmap.ID(id)] = patchFn(id)
+		}
+
+		req := &jmap.Request{}
+		req.Invoke(&email.Set{
+			Account: c.accountID,
+			Update:  updates,
+		})
+
+		resp, err := c.Do(req)
+		if err != nil {
+			for _, id := range batch {
+				errors = append(errors, fmt.Sprintf("%s: %v", id, err))
+			}
+			continue
+		}
+
+		for _, inv := range resp.Responses {
+			switch r := inv.Args.(type) {
+			case *email.SetResponse:
+				for _, idStr := range batch {
+					jid := jmap.ID(idStr)
+					if _, ok := r.Updated[jid]; ok {
+						succeeded = append(succeeded, idStr)
+					} else if setErr, ok := r.NotUpdated[jid]; ok {
+						desc := "unknown error"
+						if setErr.Description != nil {
+							desc = *setErr.Description
+						}
+						errors = append(errors, fmt.Sprintf("%s: %s", idStr, desc))
+					}
+				}
+			case *jmap.MethodError:
+				for _, id := range batch {
+					errors = append(errors, fmt.Sprintf("%s: %s", id, r.Error()))
+				}
+			}
+		}
+	}
+	return succeeded, errors
+}
 
 // summaryProperties are the Email/get properties used for list and search results.
 var summaryProperties = []string{
@@ -441,289 +497,41 @@ type SearchOptions struct {
 
 // MoveEmails moves emails to a target mailbox by updating their mailboxIds.
 // It structurally cannot destroy emails or create new ones.
-func (c *Client) MoveEmails(emailIDs []string, targetMailboxID jmap.ID) (succeeded []string, errors []string) {
-	succeeded = []string{}
-	errors = []string{}
-	for start := 0; start < len(emailIDs); start += batchSize {
-		end := start + batchSize
-		if end > len(emailIDs) {
-			end = len(emailIDs)
-		}
-		batch := emailIDs[start:end]
-
-		updates := make(map[jmap.ID]jmap.Patch)
-		for _, id := range batch {
-			updates[jmap.ID(id)] = jmap.Patch{
-				"mailboxIds": map[jmap.ID]bool{targetMailboxID: true},
-			}
-		}
-
-		req := &jmap.Request{}
-		req.Invoke(&email.Set{
-			Account: c.accountID,
-			Update:  updates,
-		})
-
-		resp, err := c.Do(req)
-		if err != nil {
-			for _, id := range batch {
-				errors = append(errors, fmt.Sprintf("%s: %v", id, err))
-			}
-			continue
-		}
-
-		for _, inv := range resp.Responses {
-			switch r := inv.Args.(type) {
-			case *email.SetResponse:
-				for _, idStr := range batch {
-					jid := jmap.ID(idStr)
-					if _, ok := r.Updated[jid]; ok {
-						succeeded = append(succeeded, idStr)
-					} else if setErr, ok := r.NotUpdated[jid]; ok {
-						desc := "unknown error"
-						if setErr.Description != nil {
-							desc = *setErr.Description
-						}
-						errors = append(errors, fmt.Sprintf("%s: %s", idStr, desc))
-					}
-				}
-			case *jmap.MethodError:
-				for _, id := range batch {
-					errors = append(errors, fmt.Sprintf("%s: %s", id, r.Error()))
-				}
-			}
-		}
-	}
-	return succeeded, errors
+func (c *Client) MoveEmails(emailIDs []string, targetMailboxID jmap.ID) ([]string, []string) {
+	return c.batchSetEmails(emailIDs, func(_ string) jmap.Patch {
+		return jmap.Patch{"mailboxIds": map[jmap.ID]bool{targetMailboxID: true}}
+	})
 }
 
 // MarkAsSpam moves emails to junk and sets the $junk keyword.
-func (c *Client) MarkAsSpam(emailIDs []string, junkMailboxID jmap.ID) (succeeded []string, errors []string) {
-	succeeded = []string{}
-	errors = []string{}
-	for start := 0; start < len(emailIDs); start += batchSize {
-		end := start + batchSize
-		if end > len(emailIDs) {
-			end = len(emailIDs)
+func (c *Client) MarkAsSpam(emailIDs []string, junkMailboxID jmap.ID) ([]string, []string) {
+	return c.batchSetEmails(emailIDs, func(_ string) jmap.Patch {
+		return jmap.Patch{
+			"mailboxIds":     map[jmap.ID]bool{junkMailboxID: true},
+			"keywords/$junk": true,
 		}
-		batch := emailIDs[start:end]
-
-		updates := make(map[jmap.ID]jmap.Patch)
-		for _, id := range batch {
-			updates[jmap.ID(id)] = jmap.Patch{
-				"mailboxIds":     map[jmap.ID]bool{junkMailboxID: true},
-				"keywords/$junk": true,
-			}
-		}
-
-		req := &jmap.Request{}
-		req.Invoke(&email.Set{
-			Account: c.accountID,
-			Update:  updates,
-		})
-
-		resp, err := c.Do(req)
-		if err != nil {
-			for _, id := range batch {
-				errors = append(errors, fmt.Sprintf("%s: %v", id, err))
-			}
-			continue
-		}
-
-		for _, inv := range resp.Responses {
-			switch r := inv.Args.(type) {
-			case *email.SetResponse:
-				for _, idStr := range batch {
-					jid := jmap.ID(idStr)
-					if _, ok := r.Updated[jid]; ok {
-						succeeded = append(succeeded, idStr)
-					} else if setErr, ok := r.NotUpdated[jid]; ok {
-						desc := "unknown error"
-						if setErr.Description != nil {
-							desc = *setErr.Description
-						}
-						errors = append(errors, fmt.Sprintf("%s: %s", idStr, desc))
-					}
-				}
-			case *jmap.MethodError:
-				for _, id := range batch {
-					errors = append(errors, fmt.Sprintf("%s: %s", id, r.Error()))
-				}
-			}
-		}
-	}
-	return succeeded, errors
+	})
 }
 
 // MarkAsRead sets the $seen keyword on emails.
-func (c *Client) MarkAsRead(emailIDs []string) (succeeded []string, errors []string) {
-	succeeded = []string{}
-	errors = []string{}
-	for start := 0; start < len(emailIDs); start += batchSize {
-		end := start + batchSize
-		if end > len(emailIDs) {
-			end = len(emailIDs)
-		}
-		batch := emailIDs[start:end]
-
-		updates := make(map[jmap.ID]jmap.Patch)
-		for _, id := range batch {
-			updates[jmap.ID(id)] = jmap.Patch{
-				"keywords/$seen": true,
-			}
-		}
-
-		req := &jmap.Request{}
-		req.Invoke(&email.Set{
-			Account: c.accountID,
-			Update:  updates,
-		})
-
-		resp, err := c.Do(req)
-		if err != nil {
-			for _, id := range batch {
-				errors = append(errors, fmt.Sprintf("%s: %v", id, err))
-			}
-			continue
-		}
-
-		for _, inv := range resp.Responses {
-			switch r := inv.Args.(type) {
-			case *email.SetResponse:
-				for _, idStr := range batch {
-					jid := jmap.ID(idStr)
-					if _, ok := r.Updated[jid]; ok {
-						succeeded = append(succeeded, idStr)
-					} else if setErr, ok := r.NotUpdated[jid]; ok {
-						desc := "unknown error"
-						if setErr.Description != nil {
-							desc = *setErr.Description
-						}
-						errors = append(errors, fmt.Sprintf("%s: %s", idStr, desc))
-					}
-				}
-			case *jmap.MethodError:
-				for _, id := range batch {
-					errors = append(errors, fmt.Sprintf("%s: %s", id, r.Error()))
-				}
-			}
-		}
-	}
-	return succeeded, errors
+func (c *Client) MarkAsRead(emailIDs []string) ([]string, []string) {
+	return c.batchSetEmails(emailIDs, func(_ string) jmap.Patch {
+		return jmap.Patch{"keywords/$seen": true}
+	})
 }
 
 // SetFlagged sets the $flagged keyword on emails.
-func (c *Client) SetFlagged(emailIDs []string) (succeeded []string, errors []string) {
-	succeeded = []string{}
-	errors = []string{}
-	for start := 0; start < len(emailIDs); start += batchSize {
-		end := start + batchSize
-		if end > len(emailIDs) {
-			end = len(emailIDs)
-		}
-		batch := emailIDs[start:end]
-
-		updates := make(map[jmap.ID]jmap.Patch)
-		for _, id := range batch {
-			updates[jmap.ID(id)] = jmap.Patch{
-				"keywords/$flagged": true,
-			}
-		}
-
-		req := &jmap.Request{}
-		req.Invoke(&email.Set{
-			Account: c.accountID,
-			Update:  updates,
-		})
-
-		resp, err := c.Do(req)
-		if err != nil {
-			for _, id := range batch {
-				errors = append(errors, fmt.Sprintf("%s: %v", id, err))
-			}
-			continue
-		}
-
-		for _, inv := range resp.Responses {
-			switch r := inv.Args.(type) {
-			case *email.SetResponse:
-				for _, idStr := range batch {
-					jid := jmap.ID(idStr)
-					if _, ok := r.Updated[jid]; ok {
-						succeeded = append(succeeded, idStr)
-					} else if setErr, ok := r.NotUpdated[jid]; ok {
-						desc := "unknown error"
-						if setErr.Description != nil {
-							desc = *setErr.Description
-						}
-						errors = append(errors, fmt.Sprintf("%s: %s", idStr, desc))
-					}
-				}
-			case *jmap.MethodError:
-				for _, id := range batch {
-					errors = append(errors, fmt.Sprintf("%s: %s", id, r.Error()))
-				}
-			}
-		}
-	}
-	return succeeded, errors
+func (c *Client) SetFlagged(emailIDs []string) ([]string, []string) {
+	return c.batchSetEmails(emailIDs, func(_ string) jmap.Patch {
+		return jmap.Patch{"keywords/$flagged": true}
+	})
 }
 
 // SetUnflagged removes the $flagged keyword from emails.
-func (c *Client) SetUnflagged(emailIDs []string) (succeeded []string, errors []string) {
-	succeeded = []string{}
-	errors = []string{}
-	for start := 0; start < len(emailIDs); start += batchSize {
-		end := start + batchSize
-		if end > len(emailIDs) {
-			end = len(emailIDs)
-		}
-		batch := emailIDs[start:end]
-
-		updates := make(map[jmap.ID]jmap.Patch)
-		for _, id := range batch {
-			updates[jmap.ID(id)] = jmap.Patch{
-				"keywords/$flagged": nil,
-			}
-		}
-
-		req := &jmap.Request{}
-		req.Invoke(&email.Set{
-			Account: c.accountID,
-			Update:  updates,
-		})
-
-		resp, err := c.Do(req)
-		if err != nil {
-			for _, id := range batch {
-				errors = append(errors, fmt.Sprintf("%s: %v", id, err))
-			}
-			continue
-		}
-
-		for _, inv := range resp.Responses {
-			switch r := inv.Args.(type) {
-			case *email.SetResponse:
-				for _, idStr := range batch {
-					jid := jmap.ID(idStr)
-					if _, ok := r.Updated[jid]; ok {
-						succeeded = append(succeeded, idStr)
-					} else if setErr, ok := r.NotUpdated[jid]; ok {
-						desc := "unknown error"
-						if setErr.Description != nil {
-							desc = *setErr.Description
-						}
-						errors = append(errors, fmt.Sprintf("%s: %s", idStr, desc))
-					}
-				}
-			case *jmap.MethodError:
-				for _, id := range batch {
-					errors = append(errors, fmt.Sprintf("%s: %s", id, r.Error()))
-				}
-			}
-		}
-	}
-	return succeeded, errors
+func (c *Client) SetUnflagged(emailIDs []string) ([]string, []string) {
+	return c.batchSetEmails(emailIDs, func(_ string) jmap.Patch {
+		return jmap.Patch{"keywords/$flagged": nil}
+	})
 }
 
 // --- Conversion helpers ---
