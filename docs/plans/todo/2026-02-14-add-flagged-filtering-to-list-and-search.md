@@ -20,14 +20,18 @@ Add `FlaggedOnly bool` and `UnflaggedOnly bool` fields to the `SearchOptions` st
 
 ### 2. Update `SearchEmails` filter building (`internal/client/email.go:254-283`)
 
+Use a shared `email.Filter` interface variable for the final filter so that both `Email/query` (line 296) and `SearchSnippet/get` (line 322) receive the same filter, whether it is a simple `FilterCondition` or a compound `FilterOperator`.
+
 After building the `FilterCondition`:
 - If `FlaggedOnly`: set `filter.HasKeyword = "$flagged"`
 - If `UnflaggedOnly` and `!UnreadOnly`: set `filter.NotKeyword = "$flagged"`
-- If `UnflaggedOnly` and `UnreadOnly`: the single `FilterCondition` already has `NotKeyword = "$seen"`. Create a second `FilterCondition{NotKeyword: "$flagged"}` and wrap both in a `FilterOperator{Operator: jmap.OperatorAND, Conditions: [filter, secondFilter]}`. Use this compound filter as the query filter instead.
+- If `UnflaggedOnly` and `UnreadOnly`: the single `FilterCondition` already has `NotKeyword = "$seen"`. Create a second `FilterCondition{NotKeyword: "$flagged"}` and wrap both in a `FilterOperator{Operator: jmap.OperatorAND, Conditions: [filter, secondFilter]}`. Assign this compound filter to the shared variable so both `Email/query` and `SearchSnippet/get` use it.
 
 ### 3. Update `ListEmails` signature and filter building (`internal/client/email.go:42-55`)
 
-Add `flaggedOnly bool` and `unflaggedOnly bool` parameters to `ListEmails`. Apply the same filter-building logic as step 2.
+Add `flaggedOnly bool` and `unflaggedOnly bool` parameters to `ListEmails`. Apply the same filter-building logic as step 2. In the compound case (`unflaggedOnly` + `unreadOnly`), keep `InMailbox` on the first `FilterCondition` inside the `FilterOperator` so the mailbox scope is preserved.
+
+(Follow-up: refactor `ListEmails` to accept an options struct -- see #21.)
 
 ### 4. Add `--flagged` and `--unflagged` flags to `list` command (`cmd/list.go`)
 
@@ -51,6 +55,9 @@ Add `flaggedOnly bool` and `unflaggedOnly bool` parameters to `ListEmails`. Appl
 - Test `SearchEmails` with `UnflaggedOnly: true` sets `NotKeyword: "$flagged"` on the filter
 - Test `SearchEmails` with `UnflaggedOnly: true` + `UnreadOnly: true` produces a compound `FilterOperator` with AND
 - Test that `FlaggedOnly` + `UnflaggedOnly` together is handled (validation at command level)
+- Test `ListEmails` with `flaggedOnly` sets `HasKeyword: "$flagged"` on the filter
+- Test `ListEmails` with `unflaggedOnly` sets `NotKeyword: "$flagged"` on the filter
+- Test `ListEmails` with `unflaggedOnly` + `unreadOnly` produces a compound `FilterOperator` that preserves `InMailbox`
 
 ### 7. Update documentation (`docs/CLI-REFERENCE.md`)
 
