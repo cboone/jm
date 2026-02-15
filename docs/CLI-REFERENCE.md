@@ -335,6 +335,14 @@ jm search [query] [flags]
 
 Examples: `"receivedAt desc"`, `"subject asc"`, `"from:asc"`.
 
+**Filtering examples:**
+
+```bash
+jm search --flagged                       # only flagged emails
+jm search --unread --unflagged            # unread and unflagged emails
+jm search "invoice" --flagged --from acme
+```
+
 All filters are combined with AND logic.
 
 **JSON output:**
