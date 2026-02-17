@@ -185,6 +185,61 @@ func TestTextFormatter_EmailDetail(t *testing.T) {
 	}
 }
 
+func TestTextFormatter_EmailDetailWithListUnsubscribe(t *testing.T) {
+	f := &TextFormatter{}
+	var buf bytes.Buffer
+
+	now := time.Date(2026, 2, 4, 10, 30, 0, 0, time.UTC)
+	detail := types.EmailDetail{
+		ID:                  "M1",
+		From:                []types.Address{{Email: "news@example.com"}},
+		To:                  []types.Address{{Email: "user@example.com"}},
+		Subject:             "Newsletter",
+		ReceivedAt:          now,
+		Body:                "content",
+		ListUnsubscribe:     "<mailto:unsub@example.com>, <https://example.com/unsub>",
+		ListUnsubscribePost: "List-Unsubscribe=One-Click",
+		Attachments:         []types.Attachment{},
+	}
+
+	if err := f.Format(&buf, detail); err != nil {
+		t.Fatal(err)
+	}
+
+	out := buf.String()
+	if !strings.Contains(out, "List-Unsubscribe: <mailto:unsub@example.com>, <https://example.com/unsub>") {
+		t.Errorf("expected List-Unsubscribe header in output, got: %s", out)
+	}
+	if !strings.Contains(out, "List-Unsubscribe-Post: List-Unsubscribe=One-Click") {
+		t.Errorf("expected List-Unsubscribe-Post header in output, got: %s", out)
+	}
+}
+
+func TestTextFormatter_EmailDetailNoListUnsubscribe(t *testing.T) {
+	f := &TextFormatter{}
+	var buf bytes.Buffer
+
+	now := time.Date(2026, 2, 4, 10, 30, 0, 0, time.UTC)
+	detail := types.EmailDetail{
+		ID:          "M1",
+		From:        []types.Address{{Email: "alice@test.com"}},
+		To:          []types.Address{{Email: "bob@test.com"}},
+		Subject:     "Test",
+		ReceivedAt:  now,
+		Body:        "body",
+		Attachments: []types.Attachment{},
+	}
+
+	if err := f.Format(&buf, detail); err != nil {
+		t.Fatal(err)
+	}
+
+	out := buf.String()
+	if strings.Contains(out, "List-Unsubscribe") {
+		t.Errorf("expected no List-Unsubscribe line when empty, got: %s", out)
+	}
+}
+
 func TestTextFormatter_EmailDetailNoCC(t *testing.T) {
 	f := &TextFormatter{}
 	var buf bytes.Buffer
