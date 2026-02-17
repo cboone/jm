@@ -36,11 +36,11 @@ When `--color` is provided, the JMAP patch includes both `$flagged` and all thre
 
 ### `unflag` command
 
-Add a `--color` / `-c` flag accepting the same color values.
+Add a `--color` / `-c` boolean flag.
 
 Behavior:
 - `fm unflag M1` — Removes `$flagged` + clears all 3 color bits (per IETF spec recommendation)
-- `fm unflag --color orange M1` — Removes only the orange color bits, leaves `$flagged` intact. Useful for resetting to default red flag without unflagging.
+- `fm unflag --color M1` — Removes color bits only, leaves `$flagged` intact. Useful for resetting to default red flag without unflagging.
 
 This is a **minor behavior change** to plain `unflag`: it now also clears color bits. This is safe because color bits are meaningless without `$flagged`, and the spec recommends this cleanup.
 
@@ -80,7 +80,7 @@ func (c FlagColor) Patch() jmap.Patch { ... }  // Returns the 3-bit keyword patc
 
 ### 2. `cmd/flag.go`
 
-- Add `--color` / `-c` string flag (default: empty)
+- Add `--color` / `-c` boolean flag (default: false)
 - When set, validate with `ParseFlagColor`, call `SetFlaggedWithColor`
 - When not set, call existing `SetFlagged` (backward compatible)
 
@@ -115,7 +115,7 @@ Update the flag and unflag help output snapshots to include `--color`.
 Add CLI tests for:
 - `fm flag --color orange M1` (passes flag parsing, fails on auth)
 - `fm flag --color invalid M1` (returns validation error)
-- `fm unflag --color orange M1` (passes flag parsing, fails on auth)
+- `fm unflag --color M1` (passes flag parsing, fails on auth)
 
 ## Verification
 

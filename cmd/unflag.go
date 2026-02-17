@@ -1,13 +1,10 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
-	"strings"
 
 	"github.com/spf13/cobra"
 
-	"github.com/cboone/fm/internal/client"
 	"github.com/cboone/fm/internal/types"
 )
 
@@ -16,14 +13,7 @@ var unflagCmd = &cobra.Command{
 	Short: "Unflag emails (remove the $flagged keyword)",
 	Args:  cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		colorStr, _ := cmd.Flags().GetString("color")
-
-		if colorStr != "" {
-			if _, err := client.ParseFlagColor(colorStr); err != nil {
-				return exitError("general_error", err.Error(),
-					fmt.Sprintf("Valid colors: %s", strings.Join(client.ValidColorNames(), ", ")))
-			}
-		}
+		colorOnly, _ := cmd.Flags().GetBool("color")
 
 		c, err := newClient()
 		if err != nil {
@@ -37,7 +27,7 @@ var unflagCmd = &cobra.Command{
 		}
 
 		var succeeded, errors []string
-		if colorStr != "" {
+		if colorOnly {
 			succeeded, errors = c.ClearFlagColor(args)
 		} else {
 			succeeded, errors = c.SetUnflagged(args)
@@ -64,7 +54,7 @@ var unflagCmd = &cobra.Command{
 }
 
 func init() {
-	unflagCmd.Flags().StringP("color", "c", "", "remove flag color only (keep the email flagged)")
+	unflagCmd.Flags().BoolP("color", "c", false, "remove flag color only (keep the email flagged)")
 	unflagCmd.Flags().BoolP("dry-run", "n", false, "preview affected emails without making changes")
 	rootCmd.AddCommand(unflagCmd)
 }

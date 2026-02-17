@@ -570,7 +570,7 @@ Without `--color`, the command removes `$flagged` and clears all `$MailFlagBit` 
 
 ```bash
 fm unflag M-email-id                 # fully unflag (remove flag + color)
-fm unflag --color orange M-email-id  # remove color only, keep flagged
+fm unflag --color M-email-id         # remove color only, keep flagged
 ```
 
 **JSON output:**
