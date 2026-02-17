@@ -818,6 +818,73 @@ func TestSearchSnippetReference(t *testing.T) {
 	}
 }
 
+// TestSearchEmails_QueryOptions verifies that UnreadOnly, Offset, Limit, and custom
+// sort field/direction are correctly encoded into the outbound Email/query call.
+func TestSearchEmails_QueryOptions(t *testing.T) {
+	var captured *jmap.Request
+
+	c := &Client{
+		accountID: "test-account",
+		doFunc: func(req *jmap.Request) (*jmap.Response, error) {
+			captured = req
+			return &jmap.Response{Responses: []*jmap.Invocation{
+				{Name: "Email/query", CallID: "0", Args: &email.QueryResponse{Total: 0, IDs: []jmap.ID{}}},
+				{Name: "Email/get", CallID: "1", Args: &email.GetResponse{List: []*email.Email{}}},
+			}}, nil
+		},
+	}
+
+	_, err := c.SearchEmails(SearchOptions{
+		UnreadOnly: true,
+		Offset:     42,
+		SortField:  "sentAt",
+		SortAsc:    true,
+		Limit:      10,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if captured == nil {
+		t.Fatal("expected SearchEmails to send a request")
+	}
+
+	query, ok := captured.Calls[0].Args.(*email.Query)
+	if !ok {
+		t.Fatalf("expected first call args to be *email.Query, got %T", captured.Calls[0].Args)
+	}
+
+	// Verify UnreadOnly sets NotKeyword to "$seen".
+	fc, ok := query.Filter.(*email.FilterCondition)
+	if !ok {
+		t.Fatalf("expected *email.FilterCondition, got %T", query.Filter)
+	}
+	if fc.NotKeyword != "$seen" {
+		t.Errorf("expected NotKeyword=$seen for UnreadOnly, got %q", fc.NotKeyword)
+	}
+
+	// Verify Offset is encoded as Position.
+	if query.Position != 42 {
+		t.Errorf("expected Position=42, got %d", query.Position)
+	}
+
+	// Verify Limit is encoded on the query.
+	if query.Limit != 10 {
+		t.Errorf("expected Limit=10, got %d", query.Limit)
+	}
+
+	// Verify custom sort field and direction.
+	if len(query.Sort) != 1 {
+		t.Fatalf("expected 1 SortComparator, got %d", len(query.Sort))
+	}
+	if query.Sort[0].Property != "sentAt" {
+		t.Errorf("expected sort Property=sentAt, got %q", query.Sort[0].Property)
+	}
+	if !query.Sort[0].IsAscending {
+		t.Error("expected IsAscending=true for SortAsc=true")
+	}
+}
+
 // TestSearchSnippetMethodName verifies that the searchSnippetGet wrapper
 // returns the correct JMAP method name (not "Mailbox/get").
 func TestSearchSnippetMethodName(t *testing.T) {
