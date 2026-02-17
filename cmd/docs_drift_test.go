@@ -23,6 +23,8 @@ func TestCLIReferenceCoverage(t *testing.T) {
 	commands := map[string]*cobra.Command{
 		"list":   listCmd,
 		"search": searchCmd,
+		"flag":   flagCmd,
+		"unflag": unflagCmd,
 	}
 
 	for name, cmd := range commands {
@@ -66,6 +68,8 @@ func TestHelpTestCoverage(t *testing.T) {
 	commands := map[string]*cobra.Command{
 		"list":   listCmd,
 		"search": searchCmd,
+		"flag":   flagCmd,
+		"unflag": unflagCmd,
 	}
 
 	for name, cmd := range commands {
