@@ -20,12 +20,12 @@ var flagCmd = &cobra.Command{
 
 		var color *client.FlagColor
 		if colorStr != "" {
-			c, err := client.ParseFlagColor(colorStr)
+			parsedColor, err := client.ParseFlagColor(colorStr)
 			if err != nil {
 				return exitError("general_error", err.Error(),
 					fmt.Sprintf("Valid colors: %s", strings.Join(client.ValidColorNames(), ", ")))
 			}
-			color = &c
+			color = &parsedColor
 		}
 
 		c, err := newClient()
