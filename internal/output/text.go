@@ -39,6 +39,8 @@ func (f *TextFormatter) Format(w io.Writer, v any) error {
 		return f.formatStats(w, val)
 	case types.DryRunResult:
 		return f.formatDryRunResult(w, val)
+	case types.DraftResult:
+		return f.formatDraftResult(w, val)
 	default:
 		// Fall back to JSON formatter for unknown types.
 		return (&JSONFormatter{}).Format(w, v)
@@ -297,6 +299,26 @@ func (f *TextFormatter) formatStats(w io.Writer, r types.StatsResult) error {
 		for _, subj := range s.Subjects {
 			fmt.Fprintf(w, "%*s  %s\n", countWidth, "", "  "+subj)
 		}
+	}
+	return nil
+}
+
+func (f *TextFormatter) formatDraftResult(w io.Writer, r types.DraftResult) error {
+	fmt.Fprintf(w, "Draft created: %s\n", r.ID)
+	fmt.Fprintf(w, "Mode: %s\n", r.Mode)
+	if len(r.From) > 0 {
+		fmt.Fprintf(w, "From: %s\n", formatAddrs(r.From))
+	}
+	fmt.Fprintf(w, "To: %s\n", formatAddrs(r.To))
+	if len(r.CC) > 0 {
+		fmt.Fprintf(w, "CC: %s\n", formatAddrs(r.CC))
+	}
+	fmt.Fprintf(w, "Subject: %s\n", r.Subject)
+	if r.Mailbox != nil {
+		fmt.Fprintf(w, "Mailbox: %s (%s)\n", r.Mailbox.Name, r.Mailbox.ID)
+	}
+	if r.InReplyTo != "" {
+		fmt.Fprintf(w, "In-Reply-To: %s\n", r.InReplyTo)
 	}
 	return nil
 }
