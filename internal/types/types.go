@@ -148,6 +148,18 @@ type StatsResult struct {
 	Senders []SenderStat `json:"senders"`
 }
 
+// DraftResult reports the outcome of a draft creation.
+type DraftResult struct {
+	ID        string           `json:"id"`
+	Mode      string           `json:"mode"`
+	Mailbox   *DestinationInfo `json:"mailbox"`
+	From      []Address        `json:"from,omitempty"`
+	To        []Address        `json:"to"`
+	CC        []Address        `json:"cc,omitempty"`
+	Subject   string           `json:"subject"`
+	InReplyTo string           `json:"in_reply_to,omitempty"`
+}
+
 // AppError is a structured error for JSON output.
 type AppError struct {
 	Error   string `json:"error"`
