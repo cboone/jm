@@ -14,5 +14,4 @@ useDefault = true
 # Add vendored dependencies and test fixtures that trigger false positives.
 paths = [
   '''go\.sum''',
-  '''vendor/''',
 ]
