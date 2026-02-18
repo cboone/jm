@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"github.com/cboone/fm/internal/client"
 )
 
 var listCmd = &cobra.Command{
@@ -40,7 +42,16 @@ var listCmd = &cobra.Command{
 				"Check your token in FM_TOKEN or config file")
 		}
 
-		result, err := c.ListEmails(mailboxName, limit, offset, unread, flagged, unflagged, sortField, sortAsc)
+		result, err := c.ListEmails(client.ListOptions{
+			MailboxNameOrID: mailboxName,
+			Limit:           limit,
+			Offset:          offset,
+			UnreadOnly:      unread,
+			FlaggedOnly:     flagged,
+			UnflaggedOnly:   unflagged,
+			SortField:       sortField,
+			SortAsc:         sortAsc,
+		})
 		if err != nil {
 			return exitError("jmap_error", err.Error(), "")
 		}
