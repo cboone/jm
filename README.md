@@ -1,12 +1,13 @@
 # fm
 
-A safe, read-oriented CLI for Fastmail email via JMAP. `fm` provides reading, searching, archiving, spam marking, and mailbox moves -- and nothing more. It is designed for use by Claude Code on the command line, with JSON output by default and structured errors.
+A safe, read-oriented CLI for Fastmail email via JMAP. `fm` provides reading, searching, archiving, spam marking, mailbox moves, and draft creation -- and nothing more. It is designed for use by Claude Code on the command line, with JSON output by default and structured errors.
 
 ## Safety
 
 - **No sending email** -- `EmailSubmission` is never called
 - **No deleting email** -- `Email/set` destroy is never used, and move to Trash is refused
 - **The `move` command refuses** Trash, Deleted Items, and Deleted Messages as targets
+- **Drafts are safe** -- `draft` creates emails only in the Drafts mailbox with `$draft` keyword; it cannot send
 
 Sending and deleting are structurally disallowed, not merely hidden behind flags.
 
@@ -116,6 +117,21 @@ fm archive <email-id-1> <email-id-2>
 
 # Move emails to a named mailbox
 fm move <email-id-1> <email-id-2> --to Receipts
+
+# Compose a new draft
+fm draft --to alice@example.com --subject "Hello" --body "Hi Alice"
+
+# Reply to an email (draft saved, not sent)
+fm draft --reply-to <email-id> --body "Thanks!"
+
+# Reply-all
+fm draft --reply-all <email-id> --body "Noted, thanks."
+
+# Forward an email
+fm draft --forward <email-id> --to bob@example.com --body "FYI"
+
+# Read body from stdin
+echo "Body text" | fm draft --to alice@example.com --subject "Hello" --body-stdin
 ```
 
 All triage commands support `--dry-run` (`-n`) to preview affected emails without making changes.
@@ -131,6 +147,12 @@ All triage commands support `--dry-run` (`-n`) to preview affected emails withou
 | `fm list`           | List emails in a mailbox                                 |
 | `fm read <id>`      | Read the full content of an email                        |
 | `fm search [query]` | Search emails by text and/or filters                     |
+
+### Compose Commands
+
+| Command          | Description                                 |
+| ---------------- | ------------------------------------------- |
+| `fm draft`       | Create a draft email (new, reply, or forward) |
 
 ### Triage Commands
 
