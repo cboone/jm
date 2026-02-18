@@ -154,6 +154,13 @@ All triage commands support `--dry-run` (`-n`) to preview affected emails withou
 | ---------------- | ------------------------------------------- |
 | `fm draft`       | Create a draft email (new, reply, or forward) |
 
+### Analytics Commands
+
+| Command      | Description                                              |
+| ------------ | -------------------------------------------------------- |
+| `fm stats`   | Aggregate emails by sender with per-sender counts        |
+| `fm summary` | Inbox triage summary with sender/domain stats and unread |
+
 ### Triage Commands
 
 | Command                               | Description                          |

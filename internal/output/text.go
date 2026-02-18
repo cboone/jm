@@ -6,15 +6,15 @@ import (
 	"sort"
 	"strings"
 	"text/tabwriter"
-	"unicode/utf8"
 
 	"github.com/cboone/fm/internal/types"
+	"github.com/mattn/go-runewidth"
 )
 
 const (
-	// maxFromWidth is the maximum rune count for the sender column in email lists.
+	// maxFromWidth is the maximum display column width for the sender column in email lists.
 	maxFromWidth = 40
-	// maxSubjectWidth is the maximum rune count for the subject column in email lists.
+	// maxSubjectWidth is the maximum display column width for the subject column in email lists.
 	maxSubjectWidth = 80
 )
 
@@ -37,6 +37,8 @@ func (f *TextFormatter) Format(w io.Writer, v any) error {
 		return f.formatMoveResult(w, val)
 	case types.StatsResult:
 		return f.formatStats(w, val)
+	case types.SummaryResult:
+		return f.formatSummary(w, val)
 	case types.DryRunResult:
 		return f.formatDryRunResult(w, val)
 	case types.DraftResult:
@@ -115,20 +117,22 @@ func (f *TextFormatter) formatEmailList(w io.Writer, result types.EmailListResul
 
 		rows[i] = displayRow{unread, from, subject, e.ReceivedAt.Format("2006-01-02 15:04")}
 
-		fromWidth := utf8.RuneCountInString(from)
+		fromWidth := runewidth.StringWidth(from)
 		if fromWidth > maxFrom {
 			maxFrom = fromWidth
 		}
-		subjectWidth := utf8.RuneCountInString(subject)
+		subjectWidth := runewidth.StringWidth(subject)
 		if subjectWidth > maxSubject {
 			maxSubject = subjectWidth
 		}
 	}
 
 	// Second pass: print with computed widths for aligned columns.
-	fmtStr := fmt.Sprintf("%%s %%-%ds  %%-%ds  %%s\n", maxFrom, maxSubject)
 	for i, r := range rows {
-		fmt.Fprintf(w, fmtStr, r.unread, r.from, r.subject, r.date)
+		fmt.Fprintf(w, "%s %s  %s  %s\n", r.unread,
+			runewidth.FillRight(r.from, maxFrom),
+			runewidth.FillRight(r.subject, maxSubject),
+			r.date)
 		fmt.Fprintf(w, "  ID: %s\n", result.Emails[i].ID)
 		if result.Emails[i].Snippet != "" {
 			fmt.Fprintf(w, "  ...%s\n", result.Emails[i].Snippet)
@@ -244,20 +248,23 @@ func (f *TextFormatter) formatDryRunResult(w io.Writer, r types.DryRunResult) er
 
 			rows[i] = displayRow{e.ID, from, subject, e.ReceivedAt.Format("2006-01-02 15:04")}
 
-			if idLen := utf8.RuneCountInString(e.ID); idLen > maxID {
+			if idLen := runewidth.StringWidth(e.ID); idLen > maxID {
 				maxID = idLen
 			}
-			if fromLen := utf8.RuneCountInString(from); fromLen > maxFrom {
+			if fromLen := runewidth.StringWidth(from); fromLen > maxFrom {
 				maxFrom = fromLen
 			}
-			if subjLen := utf8.RuneCountInString(subject); subjLen > maxSubject {
+			if subjLen := runewidth.StringWidth(subject); subjLen > maxSubject {
 				maxSubject = subjLen
 			}
 		}
 
-		fmtStr := fmt.Sprintf("  %%-%ds  %%-%ds  %%-%ds  %%s\n", maxID, maxFrom, maxSubject)
 		for _, row := range rows {
-			fmt.Fprintf(w, fmtStr, row.id, row.from, row.subject, row.date)
+			fmt.Fprintf(w, "  %s  %s  %s  %s\n",
+				runewidth.FillRight(row.id, maxID),
+				runewidth.FillRight(row.from, maxFrom),
+				runewidth.FillRight(row.subject, maxSubject),
+				row.date)
 		}
 	}
 
@@ -303,6 +310,68 @@ func (f *TextFormatter) formatStats(w io.Writer, r types.StatsResult) error {
 	return nil
 }
 
+func (f *TextFormatter) formatSummary(w io.Writer, r types.SummaryResult) error {
+	fmt.Fprintf(w, "Total: %d emails (%d unread)\n", r.Total, r.Unread)
+
+	if len(r.TopSenders) > 0 {
+		fmt.Fprintln(w, "\nTop senders:")
+		maxCount := 0
+		for _, s := range r.TopSenders {
+			if s.Count > maxCount {
+				maxCount = s.Count
+			}
+		}
+		countWidth := len(fmt.Sprintf("%d", maxCount))
+		for _, s := range r.TopSenders {
+			if s.Name != "" {
+				fmt.Fprintf(w, "%*d  %s  %s\n", countWidth, s.Count, s.Email, s.Name)
+			} else {
+				fmt.Fprintf(w, "%*d  %s\n", countWidth, s.Count, s.Email)
+			}
+			for _, subj := range s.Subjects {
+				fmt.Fprintf(w, "%*s  %s\n", countWidth, "", "  "+subj)
+			}
+		}
+	}
+
+	if len(r.TopDomains) > 0 {
+		fmt.Fprintln(w, "\nTop domains:")
+		maxCount := 0
+		for _, d := range r.TopDomains {
+			if d.Count > maxCount {
+				maxCount = d.Count
+			}
+		}
+		countWidth := len(fmt.Sprintf("%d", maxCount))
+		for _, d := range r.TopDomains {
+			fmt.Fprintf(w, "%*d  %s\n", countWidth, d.Count, d.Domain)
+		}
+	}
+
+	if len(r.Newsletters) > 0 {
+		fmt.Fprintln(w, "\nNewsletters / mailing lists:")
+		maxCount := 0
+		for _, s := range r.Newsletters {
+			if s.Count > maxCount {
+				maxCount = s.Count
+			}
+		}
+		countWidth := len(fmt.Sprintf("%d", maxCount))
+		for _, s := range r.Newsletters {
+			if s.Name != "" {
+				fmt.Fprintf(w, "%*d  %s  %s\n", countWidth, s.Count, s.Email, s.Name)
+			} else {
+				fmt.Fprintf(w, "%*d  %s\n", countWidth, s.Count, s.Email)
+			}
+			for _, subj := range s.Subjects {
+				fmt.Fprintf(w, "%*s  %s\n", countWidth, "", "  "+subj)
+			}
+		}
+	}
+
+	return nil
+}
+
 func (f *TextFormatter) formatDraftResult(w io.Writer, r types.DraftResult) error {
 	fmt.Fprintf(w, "Draft created: %s\n", r.ID)
 	fmt.Fprintf(w, "Mode: %s\n", r.Mode)
@@ -338,12 +407,11 @@ func formatAddrs(addrs []types.Address) string {
 	return strings.Join(parts, ", ")
 }
 
-// truncate shortens s to maxLen characters, replacing the end with "..."
-// if truncation is needed. If maxLen < 4, it returns s unchanged.
-func truncate(s string, maxLen int) string {
-	if maxLen < 4 || utf8.RuneCountInString(s) <= maxLen {
+// truncate shortens s to maxWidth display columns, replacing the end with
+// "..." if truncation is needed. If maxWidth < 4, it returns s unchanged.
+func truncate(s string, maxWidth int) string {
+	if maxWidth < 4 || runewidth.StringWidth(s) <= maxWidth {
 		return s
 	}
-	runes := []rune(s)
-	return string(runes[:maxLen-3]) + "..."
+	return runewidth.Truncate(s, maxWidth, "...")
 }

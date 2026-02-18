@@ -2605,3 +2605,228 @@ func TestQueryEmailIDs_IgnoresLimitAndSort(t *testing.T) {
 		t.Errorf("expected no sort comparators, got %d", len(query.Sort))
 	}
 }
+
+// --- extractDomain tests ---
+
+func TestExtractDomain(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"alice@example.com", "example.com"},
+		{"Alice@EXAMPLE.COM", "example.com"},
+		{"user@sub.domain.org", "sub.domain.org"},
+		{"noatsign", ""},
+		{"trailing@", ""},
+		{"multi@at@example.com", "example.com"},
+	}
+	for _, tt := range tests {
+		got := extractDomain(tt.input)
+		if got != tt.want {
+			t.Errorf("extractDomain(%q) = %q, want %q", tt.input, got, tt.want)
+		}
+	}
+}
+
+// --- hasListHeaders tests ---
+
+func TestHasListHeaders(t *testing.T) {
+	tests := []struct {
+		name    string
+		headers []*email.Header
+		want    bool
+	}{
+		{
+			name:    "nil headers",
+			headers: nil,
+			want:    false,
+		},
+		{
+			name:    "empty headers",
+			headers: []*email.Header{},
+			want:    false,
+		},
+		{
+			name: "has List-Id",
+			headers: []*email.Header{
+				{Name: "From", Value: "test@example.com"},
+				{Name: "List-Id", Value: "<list.example.com>"},
+			},
+			want: true,
+		},
+		{
+			name: "has List-Unsubscribe",
+			headers: []*email.Header{
+				{Name: "List-Unsubscribe", Value: "<https://example.com/unsub>"},
+			},
+			want: true,
+		},
+		{
+			name: "case insensitive",
+			headers: []*email.Header{
+				{Name: "list-id", Value: "<list.example.com>"},
+			},
+			want: true,
+		},
+		{
+			name: "no list headers",
+			headers: []*email.Header{
+				{Name: "From", Value: "test@example.com"},
+				{Name: "Subject", Value: "Hello"},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := hasListHeaders(tt.headers)
+			if got != tt.want {
+				t.Errorf("hasListHeaders() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// --- AggregateSummary tests ---
+
+func TestAggregateSummary_Basic(t *testing.T) {
+	c := &Client{
+		accountID: "test-account",
+		doFunc: func(req *jmap.Request) (*jmap.Response, error) {
+			return &jmap.Response{Responses: []*jmap.Invocation{
+				{Name: "Email/query", CallID: "0", Args: &email.QueryResponse{
+					Total: 4,
+					IDs:   []jmap.ID{"M1", "M2", "M3", "M4"},
+				}},
+				{Name: "Email/get", CallID: "1", Args: &email.GetResponse{
+					List: []*email.Email{
+						{ID: "M1", From: []*mail.Address{{Name: "Alice", Email: "alice@example.com"}}, Subject: "Hello", Keywords: map[string]bool{"$seen": true}},
+						{ID: "M2", From: []*mail.Address{{Name: "Alice", Email: "alice@example.com"}}, Subject: "Follow-up", Keywords: map[string]bool{}},
+						{ID: "M3", From: []*mail.Address{{Name: "Bob", Email: "bob@work.com"}}, Subject: "Meeting", Keywords: map[string]bool{}},
+						{ID: "M4", From: []*mail.Address{{Email: "carol@example.com"}}, Subject: "Newsletter", Keywords: map[string]bool{"$seen": true}},
+					},
+				}},
+			}}, nil
+		},
+	}
+
+	result, err := c.AggregateSummary(SummaryOptions{MailboxID: "mb-inbox", Limit: 10})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Total != 4 {
+		t.Errorf("expected Total=4, got %d", result.Total)
+	}
+	if result.Unread != 2 {
+		t.Errorf("expected Unread=2, got %d", result.Unread)
+	}
+	if len(result.TopSenders) != 3 {
+		t.Fatalf("expected 3 senders, got %d", len(result.TopSenders))
+	}
+	if result.TopSenders[0].Email != "alice@example.com" || result.TopSenders[0].Count != 2 {
+		t.Errorf("expected first sender=alice@example.com count=2, got %s count=%d", result.TopSenders[0].Email, result.TopSenders[0].Count)
+	}
+	if len(result.TopDomains) != 2 {
+		t.Fatalf("expected 2 domains, got %d", len(result.TopDomains))
+	}
+	if result.TopDomains[0].Domain != "example.com" || result.TopDomains[0].Count != 3 {
+		t.Errorf("expected first domain=example.com count=3, got %s count=%d", result.TopDomains[0].Domain, result.TopDomains[0].Count)
+	}
+	if result.Newsletters != nil {
+		t.Errorf("expected nil Newsletters when not requested, got %v", result.Newsletters)
+	}
+}
+
+func TestAggregateSummary_WithNewsletters(t *testing.T) {
+	c := &Client{
+		accountID: "test-account",
+		doFunc: func(req *jmap.Request) (*jmap.Response, error) {
+			return &jmap.Response{Responses: []*jmap.Invocation{
+				{Name: "Email/query", CallID: "0", Args: &email.QueryResponse{
+					Total: 2,
+					IDs:   []jmap.ID{"M1", "M2"},
+				}},
+				{Name: "Email/get", CallID: "1", Args: &email.GetResponse{
+					List: []*email.Email{
+						{
+							ID:       "M1",
+							From:     []*mail.Address{{Name: "Newsletter", Email: "news@example.com"}},
+							Subject:  "Weekly Digest",
+							Keywords: map[string]bool{},
+							Headers:  []*email.Header{{Name: "List-Id", Value: "<news.example.com>"}},
+						},
+						{
+							ID:       "M2",
+							From:     []*mail.Address{{Name: "Bob", Email: "bob@work.com"}},
+							Subject:  "Hello",
+							Keywords: map[string]bool{"$seen": true},
+							Headers:  []*email.Header{},
+						},
+					},
+				}},
+			}}, nil
+		},
+	}
+
+	result, err := c.AggregateSummary(SummaryOptions{MailboxID: "mb-inbox", Limit: 10, Newsletters: true})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Newsletters) != 1 {
+		t.Fatalf("expected 1 newsletter, got %d", len(result.Newsletters))
+	}
+	if result.Newsletters[0].Email != "news@example.com" {
+		t.Errorf("expected newsletter=news@example.com, got %s", result.Newsletters[0].Email)
+	}
+}
+
+func TestAggregateSummary_LimitTruncation(t *testing.T) {
+	c := &Client{
+		accountID: "test-account",
+		doFunc: func(req *jmap.Request) (*jmap.Response, error) {
+			return &jmap.Response{Responses: []*jmap.Invocation{
+				{Name: "Email/query", CallID: "0", Args: &email.QueryResponse{
+					Total: 3,
+					IDs:   []jmap.ID{"M1", "M2", "M3"},
+				}},
+				{Name: "Email/get", CallID: "1", Args: &email.GetResponse{
+					List: []*email.Email{
+						{ID: "M1", From: []*mail.Address{{Email: "a@one.com"}}, Keywords: map[string]bool{}},
+						{ID: "M2", From: []*mail.Address{{Email: "b@two.com"}}, Keywords: map[string]bool{}},
+						{ID: "M3", From: []*mail.Address{{Email: "c@three.com"}}, Keywords: map[string]bool{}},
+					},
+				}},
+			}}, nil
+		},
+	}
+
+	result, err := c.AggregateSummary(SummaryOptions{MailboxID: "mb-inbox", Limit: 2})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.TopSenders) != 2 {
+		t.Errorf("expected 2 top senders (limit), got %d", len(result.TopSenders))
+	}
+	if len(result.TopDomains) != 2 {
+		t.Errorf("expected 2 top domains (limit), got %d", len(result.TopDomains))
+	}
+}
+
+func TestAggregateSummary_MethodError(t *testing.T) {
+	c := &Client{
+		accountID: "test-account",
+		doFunc: func(req *jmap.Request) (*jmap.Response, error) {
+			return &jmap.Response{Responses: []*jmap.Invocation{
+				{Name: "error", CallID: "0", Args: &jmap.MethodError{Type: "serverFail"}},
+			}}, nil
+		},
+	}
+
+	_, err := c.AggregateSummary(SummaryOptions{MailboxID: "mb-inbox", Limit: 10})
+	if err == nil {
+		t.Fatal("expected error on method error response")
+	}
+	if !strings.Contains(err.Error(), "summary query") {
+		t.Errorf("expected error to contain 'summary query', got: %v", err)
+	}
+}
