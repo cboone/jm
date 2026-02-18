@@ -13,6 +13,8 @@ var unflagCmd = &cobra.Command{
 	Short: "Unflag emails (remove the $flagged keyword)",
 	Args:  cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		colorOnly, _ := cmd.Flags().GetBool("color")
+
 		c, err := newClient()
 		if err != nil {
 			return exitError("authentication_failed", err.Error(),
@@ -24,7 +26,12 @@ var unflagCmd = &cobra.Command{
 			return dryRunPreview(c, args, "unflag", nil)
 		}
 
-		succeeded, errors := c.SetUnflagged(args)
+		var succeeded, errors []string
+		if colorOnly {
+			succeeded, errors = c.ClearFlagColor(args)
+		} else {
+			succeeded, errors = c.SetUnflagged(args)
+		}
 
 		result := types.MoveResult{
 			Matched:   len(args),
@@ -47,6 +54,7 @@ var unflagCmd = &cobra.Command{
 }
 
 func init() {
+	unflagCmd.Flags().BoolP("color", "c", false, "remove flag color only (keep the email flagged)")
 	unflagCmd.Flags().BoolP("dry-run", "n", false, "preview affected emails without making changes")
 	rootCmd.AddCommand(unflagCmd)
 }
