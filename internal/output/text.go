@@ -37,6 +37,8 @@ func (f *TextFormatter) Format(w io.Writer, v any) error {
 		return f.formatMoveResult(w, val)
 	case types.StatsResult:
 		return f.formatStats(w, val)
+	case types.SummaryResult:
+		return f.formatSummary(w, val)
 	case types.DryRunResult:
 		return f.formatDryRunResult(w, val)
 	default:
@@ -298,6 +300,68 @@ func (f *TextFormatter) formatStats(w io.Writer, r types.StatsResult) error {
 			fmt.Fprintf(w, "%*s  %s\n", countWidth, "", "  "+subj)
 		}
 	}
+	return nil
+}
+
+func (f *TextFormatter) formatSummary(w io.Writer, r types.SummaryResult) error {
+	fmt.Fprintf(w, "Total: %d emails (%d unread)\n", r.Total, r.Unread)
+
+	if len(r.TopSenders) > 0 {
+		fmt.Fprintln(w, "\nTop senders:")
+		maxCount := 0
+		for _, s := range r.TopSenders {
+			if s.Count > maxCount {
+				maxCount = s.Count
+			}
+		}
+		countWidth := len(fmt.Sprintf("%d", maxCount))
+		for _, s := range r.TopSenders {
+			if s.Name != "" {
+				fmt.Fprintf(w, "%*d  %s  %s\n", countWidth, s.Count, s.Email, s.Name)
+			} else {
+				fmt.Fprintf(w, "%*d  %s\n", countWidth, s.Count, s.Email)
+			}
+			for _, subj := range s.Subjects {
+				fmt.Fprintf(w, "%*s  %s\n", countWidth, "", "  "+subj)
+			}
+		}
+	}
+
+	if len(r.TopDomains) > 0 {
+		fmt.Fprintln(w, "\nTop domains:")
+		maxCount := 0
+		for _, d := range r.TopDomains {
+			if d.Count > maxCount {
+				maxCount = d.Count
+			}
+		}
+		countWidth := len(fmt.Sprintf("%d", maxCount))
+		for _, d := range r.TopDomains {
+			fmt.Fprintf(w, "%*d  %s\n", countWidth, d.Count, d.Domain)
+		}
+	}
+
+	if len(r.Newsletters) > 0 {
+		fmt.Fprintln(w, "\nNewsletters / mailing lists:")
+		maxCount := 0
+		for _, s := range r.Newsletters {
+			if s.Count > maxCount {
+				maxCount = s.Count
+			}
+		}
+		countWidth := len(fmt.Sprintf("%d", maxCount))
+		for _, s := range r.Newsletters {
+			if s.Name != "" {
+				fmt.Fprintf(w, "%*d  %s  %s\n", countWidth, s.Count, s.Email, s.Name)
+			} else {
+				fmt.Fprintf(w, "%*d  %s\n", countWidth, s.Count, s.Email)
+			}
+			for _, subj := range s.Subjects {
+				fmt.Fprintf(w, "%*s  %s\n", countWidth, "", "  "+subj)
+			}
+		}
+	}
+
 	return nil
 }
 
