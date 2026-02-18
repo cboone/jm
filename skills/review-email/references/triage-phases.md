@@ -9,12 +9,14 @@ Scan the inbox for messages that need attention or action.
 - Identify personal and direct messages and surface them to the user.
 - Identify time-sensitive items: renewals, overdue notices, appointment reminders, expiring verification links.
 - Flag high-priority items using the appropriate color (red for sensitive/admin, orange for upcoming commitments).
+- If a personal message needs a reply, offer to draft one. Drafts are created in the Drafts mailbox and must be sent manually from Fastmail.
 
 ```bash
 fm list --unread --limit 50 --format text
 fm read <id>
 fm flag --color red <id>
 fm flag --color orange <id>
+fm draft --reply-to <id> --body "..."
 ```
 
 ## Phase 2: Spam
@@ -36,11 +38,13 @@ Identify promotional emails and other low-value mail that is not technically spa
 
 - For each sender, assess how to stop future emails:
   - Unsubscribe link (preferred; `fm read <id>` exposes List-Unsubscribe when present).
+  - Draft an unsubscribe request when no link is available: `fm draft --reply-to <id> --body "Please remove me from this mailing list."`.
   - Fastmail-side filter or rule if unsubscribe is unavailable or unreliable.
 - Flag unsubscribe links for the user to handle from their client, then archive the messages.
 
 ```bash
 fm read <id>
+fm draft --reply-to <id> --body "Please remove me from this mailing list."
 fm mark-read --from <sender>
 fm archive --from <sender>
 ```

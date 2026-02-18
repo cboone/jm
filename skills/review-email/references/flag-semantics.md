@@ -39,8 +39,8 @@ fm unflag <email-id>
 Check for orphaned flags in non-inbox mailboxes:
 
 ```bash
-fm stats --flagged -m Archive --format text
-fm stats --flagged -m Junk --format text
+fm summary --flagged -m Archive --format text
+fm summary --flagged -m Junk --format text
 ```
 
 Users may archive or spam flagged emails from their email client without removing the flag first. Unflag any found in Archive or Junk.

@@ -7,7 +7,7 @@ Detailed operational procedures for email triage sessions.
 1. Check today's date against the handoff document's last-updated date.
 1. If different day: start from Phase 1 (new mail may have arrived overnight).
 1. Verify connectivity with `fm session`.
-1. Get the unread sender distribution with `fm stats --unread --format text`.
+1. Get the unread sender distribution with `fm summary --unread --format text`.
 1. Review user preferences recorded in the handoff document, especially personal-message gate and active holds.
 1. Start from the largest non-personal sender groups.
 
@@ -37,10 +37,10 @@ fm archive --from notifications@github.com
 After each batch, verify the result:
 
 ```bash
-fm stats --unread --format text
+fm summary --unread --format text
 ```
 
-Check that the processed sender no longer appears in the unread stats, or that the count dropped as expected.
+Check that the processed sender no longer appears in the summary, or that the count dropped as expected.
 
 ## Batch Safety
 
@@ -71,6 +71,38 @@ If uncertain, ask the user before processing.
 - "Spam" implies: mark-read, unflag, then spam.
 
 These are multi-step sequences, not single commands. Run each step explicitly.
+
+## Draft Composition Patterns
+
+Drafts are safe: they are created in the Drafts mailbox with the `$draft` keyword and cannot be sent by `fm`. The user must review and send drafts manually from Fastmail.
+
+Always offer draft composition to the user rather than drafting autonomously. The user decides what to say and when to send.
+
+### Reply
+
+```bash
+fm draft --reply-to <id> --body "Reply text"
+```
+
+### Reply All
+
+```bash
+fm draft --reply-all <id> --body "Reply text"
+```
+
+### Forward
+
+```bash
+fm draft --forward <id> --to <addr> --body "FYI - see below."
+```
+
+### Unsubscribe Request
+
+When an unsubscribe link is unavailable or unreliable:
+
+```bash
+fm draft --reply-to <id> --body "Please remove me from this mailing list. Thank you."
+```
 
 ## Flag Workflow
 

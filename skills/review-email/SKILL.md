@@ -3,7 +3,8 @@ name: review-email
 description: >-
   Guided email triage workflow using the fm CLI. Walks through an 8-phase
   inbox review process with safety gates for personal messages, batch
-  operations by sender cohort, and session handoff tracking. Use when the
+  operations by sender cohort, draft reply composition, and session
+  handoff tracking. Use when the
   user says "review email", "review my email", "triage email", "check my
   inbox", "email triage", "process my inbox", "triage my inbox", "clean
   up my inbox", "go through my email", "inbox zero", "email review", or
@@ -51,10 +52,10 @@ fm session
 ### 2. Get the Landscape
 
 ```bash
-fm stats --unread --format text
+fm summary --unread --format text
 ```
 
-Review the sender distribution. Identify high-volume, low-risk groups and any senders that might be personal.
+Review the sender and domain distribution. Identify high-volume, low-risk groups and any senders that might be personal. Use `--newsletters` to detect senders with List-Id or List-Unsubscribe headers, and `--subjects` to sample subject lines per sender.
 
 ### 3. Personal-Message Gate
 
@@ -97,28 +98,40 @@ For each sender cohort:
 fm archive --from <sender> --dry-run
 ```
 
-2. Execute the batch:
+1. Execute the batch:
 
 ```bash
 fm mark-read --from <sender>
 fm archive --from <sender>
 ```
 
-3. Verify remaining counts:
+1. Verify remaining counts:
 
 ```bash
-fm stats --unread --format text
+fm summary --unread --format text
 ```
 
 "Archive" implies mark-read and unflag first, then archive. "Spam" implies mark-read and unflag first, then spam.
 
 See `./references/runbook.md` for detailed batch operation patterns.
 
-### 6. Clean Up Stale Flags
+### 6. Draft Replies
+
+During any phase, offer to draft replies when the user wants to respond to an email. Drafts are safe: they are created in the Drafts mailbox with the `$draft` keyword and cannot be sent by `fm`. The user must review and send drafts manually from Fastmail.
+
+```bash
+fm draft --reply-to <id> --body "Reply text"
+fm draft --reply-all <id> --body "Reply text"
+fm draft --forward <id> --to <addr> --body "FYI"
+```
+
+See `./references/runbook.md` for additional composition patterns, including unsubscribe requests.
+
+### 7. Clean Up Stale Flags
 
 Check for and remove orphaned flags in non-inbox mailboxes. See `./references/flag-semantics.md` for the cleanup procedure and the distinction between fully unflagging (`fm unflag <id>`) and removing only the color (`fm unflag --color <id>`).
 
-### 7. Session End
+### 8. Session End
 
 Update the project's handoff document in place:
 
@@ -138,7 +151,7 @@ Git history preserves previous snapshots automatically.
 
 **Operational procedures:**
 
-- `./references/runbook.md` - Batch safety, personal vs. bulk heuristics, flag workflows, session checklists
+- `./references/runbook.md` - Batch safety, personal vs. bulk heuristics, draft composition patterns, flag workflows, session checklists
 
 **Flag semantics:**
 
