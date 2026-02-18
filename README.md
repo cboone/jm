@@ -132,6 +132,13 @@ All triage commands support `--dry-run` (`-n`) to preview affected emails withou
 | `fm read <id>`      | Read the full content of an email                        |
 | `fm search [query]` | Search emails by text and/or filters                     |
 
+### Analytics Commands
+
+| Command      | Description                                              |
+| ------------ | -------------------------------------------------------- |
+| `fm stats`   | Aggregate emails by sender with per-sender counts        |
+| `fm summary` | Inbox triage summary with sender/domain stats and unread |
+
 ### Triage Commands
 
 | Command                               | Description                          |

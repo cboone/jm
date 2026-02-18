@@ -445,6 +445,99 @@ Right-aligned counts, left-aligned emails, optional display name, indented subje
 
 ---
 
+### summary
+
+Show an inbox triage summary with sender aggregation, domain aggregation, unread count, and optional newsletter detection. Provides a single-pass overview of a mailbox for cleanup sessions.
+
+```bash
+fm summary [flags]
+```
+
+No arguments.
+
+| Flag            | Short | Default | Description                                             |
+| --------------- | ----- | ------- | ------------------------------------------------------- |
+| `--mailbox`     | `-m`  | `inbox` | Mailbox name or ID                                      |
+| `--unread`      | `-u`  | `false` | Only count unread messages                              |
+| `--flagged`     | `-f`  | `false` | Only count flagged messages                             |
+| `--unflagged`   |       | `false` | Only count unflagged messages                           |
+| `--limit`       | `-l`  | `10`    | Number of top senders/domains to show (minimum 1)       |
+| `--subjects`    |       | `false` | Include subject lines per sender                        |
+| `--newsletters` |       | `false` | Detect newsletters via List-Id/List-Unsubscribe headers |
+
+`--flagged` and `--unflagged` are mutually exclusive.
+
+**Usage examples:**
+
+```bash
+fm summary                                # inbox overview
+fm summary --unread                       # unread-only summary
+fm summary --unread --subjects            # with subject lines
+fm summary --newsletters                  # detect newsletters
+fm summary --mailbox archive --limit 20   # top 20 in archive
+```
+
+**JSON output:**
+
+```json
+{
+  "total": 1234,
+  "unread": 567,
+  "top_senders": [
+    {
+      "email": "newsletter@example.com",
+      "name": "Example Newsletter",
+      "count": 42
+    },
+    {
+      "email": "boss@work.com",
+      "name": "Boss Name",
+      "count": 31
+    }
+  ],
+  "top_domains": [
+    {
+      "domain": "example.com",
+      "count": 89
+    },
+    {
+      "domain": "work.com",
+      "count": 45
+    }
+  ],
+  "newsletters": [
+    {
+      "email": "newsletter@example.com",
+      "name": "Example Newsletter",
+      "count": 42
+    }
+  ]
+}
+```
+
+The `newsletters` field is omitted when `--newsletters` is not set. The `subjects` field on each sender is omitted when `--subjects` is not set.
+
+**Text output:**
+
+```text
+Total: 1234 emails (567 unread)
+
+Top senders:
+42  newsletter@example.com  Example Newsletter
+31  boss@work.com  Boss Name
+
+Top domains:
+89  example.com
+45  work.com
+
+Newsletters / mailing lists:
+42  newsletter@example.com  Example Newsletter
+```
+
+Right-aligned counts, left-aligned emails, optional display name. The newsletters section only appears when `--newsletters` is used and newsletters are detected.
+
+---
+
 ### archive
 
 Move emails to the Archive mailbox. Specify emails by ID or by filter flags.
@@ -872,6 +965,27 @@ Top-level response from the `stats` command.
 | --------- | ------------ | --------------------------------- |
 | `total`   | number       | Total matching emails             |
 | `senders` | SenderStat[] | Sorted by count descending        |
+
+### DomainStat
+
+Aggregated count for a single sender domain, returned within `SummaryResult`.
+
+| Field    | Type   | Notes                            |
+| -------- | ------ | -------------------------------- |
+| `domain` | string | Lowercased sender domain         |
+| `count`  | number | Number of matching emails        |
+
+### SummaryResult
+
+Top-level response from the `summary` command.
+
+| Field         | Type         | Notes                                    |
+| ------------- | ------------ | ---------------------------------------- |
+| `total`       | number       | Total matching emails                    |
+| `unread`      | number       | Unread count (always populated)          |
+| `top_senders` | SenderStat[] | Sorted by count descending, limited      |
+| `top_domains` | DomainStat[] | Sorted by count descending, limited      |
+| `newsletters` | SenderStat[] | Omitted unless `--newsletters` is used   |
 
 ### EmailDetail
 
