@@ -601,9 +601,9 @@ func (c *Client) AggregateEmailsBySender(opts StatsOptions) (types.StatsResult, 
 	}
 
 	senders := make([]types.SenderStat, 0, len(accum))
-	for email, acc := range accum {
+	for addr, acc := range accum {
 		stat := types.SenderStat{
-			Email: email,
+			Email: addr,
 			Name:  acc.name,
 			Count: acc.count,
 		}
