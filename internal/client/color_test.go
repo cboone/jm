@@ -88,13 +88,13 @@ func TestFlagColorPatch_AllColors(t *testing.T) {
 		bit1  bool
 		bit2  bool
 	}{
-		{FlagColorRed, false, false, false},    // 0 = 000
-		{FlagColorOrange, true, false, false},   // 1 = 001
-		{FlagColorYellow, false, true, false},   // 2 = 010
-		{FlagColorGreen, true, true, false},     // 3 = 011
-		{FlagColorBlue, false, false, true},     // 4 = 100
-		{FlagColorPurple, true, false, true},    // 5 = 101
-		{FlagColorGray, false, true, true},      // 6 = 110
+		{FlagColorRed, false, false, false},   // 0 = 000
+		{FlagColorOrange, true, false, false}, // 1 = 001
+		{FlagColorYellow, false, true, false}, // 2 = 010
+		{FlagColorGreen, true, true, false},   // 3 = 011
+		{FlagColorBlue, false, false, true},   // 4 = 100
+		{FlagColorPurple, true, false, true},  // 5 = 101
+		{FlagColorGray, false, true, true},    // 6 = 110
 	}
 	for _, tc := range cases {
 		patch := tc.color.Patch()
