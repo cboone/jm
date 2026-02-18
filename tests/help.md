@@ -6,9 +6,9 @@ Verify that the root help output shows all commands and key information.
 
 ```scrut
 $ $TESTDIR/../fm --help
-fm is a command-line tool for reading, searching, and triaging Fastmail email (glob)
-via the JMAP protocol. It connects to Fastmail (or any JMAP server) and (glob)
-provides read, search, archive, and spam operations. (glob)
+fm is a command-line tool for reading, searching, triaging, and drafting Fastmail (glob)
+email via the JMAP protocol. It connects to Fastmail (or any JMAP server) and (glob)
+provides read, search, archive, spam, and draft operations. (glob)
  (regex)
 Sending and deleting email are structurally disallowed. (glob)
  (regex)
@@ -18,6 +18,7 @@ Usage: (glob)
 Available Commands: (glob)
   archive * (glob)
   completion * (glob)
+  draft * (glob)
   flag * (glob)
   help * (glob)
   list * (glob)
@@ -29,6 +30,7 @@ Available Commands: (glob)
   session * (glob)
   spam * (glob)
   stats * (glob)
+  summary * (glob)
   unflag * (glob)
  (regex)
 Flags: (glob)
@@ -145,6 +147,28 @@ Flags: (glob)
 *-f, --flagged* (glob)
 *--help* (glob)
 *-m, --mailbox* (glob)
+*--subjects* (glob)
+*--unflagged* (glob)
+*-u, --unread* (glob)
+* (glob*)
+```
+
+## Summary command help
+
+```scrut
+$ $TESTDIR/../fm summary --help
+Aggregate emails by sender and domain, count unread messages, and optionally (glob)
+detect newsletters. Provides a single-pass triage overview of a mailbox. (glob)
+ (regex)
+Usage: (glob)
+  fm summary [flags] (glob)
+ (regex)
+Flags: (glob)
+*-f, --flagged* (glob)
+*--help* (glob)
+*-l, --limit* (glob)
+*-m, --mailbox* (glob)
+*--newsletters* (glob)
 *--subjects* (glob)
 *--unflagged* (glob)
 *-u, --unread* (glob)
@@ -301,5 +325,29 @@ Flags: (glob)
 *--to* (glob)
 *--unflagged* (glob)
 *-u, --unread* (glob)
+* (glob*)
+```
+
+## Draft command help
+
+```scrut
+$ $TESTDIR/../fm draft --help
+Create a draft email for later review and sending from Fastmail. (glob)
+* (glob+)
+Usage: (glob)
+  fm draft [flags] (glob)
+ (regex)
+Flags: (glob)
+*--bcc* (glob)
+*--body * (glob)
+*--body-stdin* (glob)
+*--cc* (glob)
+*--forward* (glob)
+*--help* (glob)
+*--html* (glob)
+*--reply-all* (glob)
+*--reply-to* (glob)
+*--subject* (glob)
+*--to* (glob)
 * (glob*)
 ```

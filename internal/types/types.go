@@ -148,6 +148,33 @@ type StatsResult struct {
 	Senders []SenderStat `json:"senders"`
 }
 
+// DomainStat is an aggregated count for a single sender domain.
+type DomainStat struct {
+	Domain string `json:"domain"`
+	Count  int    `json:"count"`
+}
+
+// SummaryResult wraps a triage-oriented inbox summary with sender and domain aggregation.
+type SummaryResult struct {
+	Total       uint64       `json:"total"`
+	Unread      uint64       `json:"unread"`
+	TopSenders  []SenderStat `json:"top_senders"`
+	TopDomains  []DomainStat `json:"top_domains"`
+	Newsletters []SenderStat `json:"newsletters,omitempty"`
+}
+
+// DraftResult reports the outcome of a draft creation.
+type DraftResult struct {
+	ID        string           `json:"id"`
+	Mode      string           `json:"mode"`
+	Mailbox   *DestinationInfo `json:"mailbox"`
+	From      []Address        `json:"from,omitempty"`
+	To        []Address        `json:"to"`
+	CC        []Address        `json:"cc,omitempty"`
+	Subject   string           `json:"subject"`
+	InReplyTo string           `json:"in_reply_to,omitempty"`
+}
+
 // AppError is a structured error for JSON output.
 type AppError struct {
 	Error   string `json:"error"`

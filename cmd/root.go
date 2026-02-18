@@ -23,9 +23,9 @@ var (
 	rootCmd       = &cobra.Command{
 		Use:   "fm",
 		Short: "Fastmail Mail -- a safe, read-oriented CLI for Fastmail email via JMAP",
-		Long: `fm is a command-line tool for reading, searching, and triaging Fastmail email
-via the JMAP protocol. It connects to Fastmail (or any JMAP server) and
-provides read, search, archive, and spam operations.
+		Long: `fm is a command-line tool for reading, searching, triaging, and drafting Fastmail
+email via the JMAP protocol. It connects to Fastmail (or any JMAP server) and
+provides read, search, archive, spam, and draft operations.
 
 Sending and deleting email are structurally disallowed.`,
 		Version:       version,

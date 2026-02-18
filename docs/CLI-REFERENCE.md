@@ -445,6 +445,181 @@ Right-aligned counts, left-aligned emails, optional display name, indented subje
 
 ---
 
+### draft
+
+Create a draft email in the Drafts mailbox. Supports four composition modes: new, reply, reply-all, and forward. The draft is saved with `$draft` and `$seen` keywords and is **not sent**.
+
+```bash
+fm draft --to alice@example.com --subject "Hello" --body "Hi Alice"
+fm draft --reply-to <email-id> --body "Thanks!"
+fm draft --reply-all <email-id> --body "Noted, thanks."
+fm draft --forward <email-id> --to bob@example.com --body "FYI"
+echo "Body text" | fm draft --to alice@example.com --subject "Test" --body-stdin
+```
+
+No positional arguments.
+
+| Flag           | Default | Description                                          |
+| -------------- | ------- | ---------------------------------------------------- |
+| `--to`         | (none)  | Recipient addresses (RFC 5322); required for new/fwd |
+| `--cc`         | (none)  | CC addresses (RFC 5322)                              |
+| `--bcc`        | (none)  | BCC addresses (RFC 5322)                             |
+| `--subject`    | (none)  | Subject line; required for new                       |
+| `--body`       | (none)  | Message body (mutually exclusive with `--body-stdin`) |
+| `--body-stdin` | `false` | Read body from stdin                                 |
+| `--reply-to`   | (none)  | Email ID to reply to                                 |
+| `--reply-all`  | (none)  | Email ID to reply-all to                             |
+| `--forward`    | (none)  | Email ID to forward                                  |
+| `--html`       | `false` | Treat body as HTML                                   |
+
+**Mode determination:** If none of `--reply-to`, `--reply-all`, or `--forward` is set, mode is "new". Exactly one mode flag may be provided; they are mutually exclusive.
+
+**Validation rules:**
+- New mode requires `--to` and `--subject`
+- Forward mode requires `--to`
+- Reply/reply-all derive `--to` and `--subject` from the original email
+- Exactly one of `--body` or `--body-stdin` must be provided
+
+**Address format:** RFC 5322 format is supported: `"Name <email>"` or bare `email@example.com`.
+
+**Reply behavior:**
+- To: original `Reply-To` header (or `From` if absent); user `--to` appended
+- Subject: prepends `Re:` if not already present (overridable with `--subject`)
+- Threading: sets `In-Reply-To` and `References` from the original message
+
+**Reply-all behavior:**
+- Same as reply, plus CC: original `To` + `CC` minus self, minus anyone already in `To`; user `--cc` appended
+
+**Forward behavior:**
+- Subject: prepends `Fwd:` if not already present (overridable with `--subject`)
+- Body: user body followed by separator and quoted original body
+- No threading headers set
+
+**JSON output:**
+
+```json
+{
+  "id": "M-new-draft-id",
+  "mode": "reply",
+  "mailbox": {
+    "id": "mb-drafts-id",
+    "name": "Drafts"
+  },
+  "from": [{ "name": "", "email": "user@fastmail.com" }],
+  "to": [{ "name": "Alice", "email": "alice@example.com" }],
+  "cc": [],
+  "subject": "Re: Meeting tomorrow",
+  "in_reply_to": "<CAExample1234@example.com>"
+}
+```
+
+**Text output:**
+
+```text
+Draft created: M-new-draft-id
+Mode: reply
+From: user@fastmail.com
+To: Alice <alice@example.com>
+Subject: Re: Meeting tomorrow
+Mailbox: Drafts (mb-drafts-id)
+In-Reply-To: <CAExample1234@example.com>
+```
+
+---
+
+### summary
+
+Show an inbox triage summary with sender aggregation, domain aggregation, unread count, and optional newsletter detection. Provides a single-pass overview of a mailbox for cleanup sessions.
+
+```bash
+fm summary [flags]
+```
+
+No arguments.
+
+| Flag            | Short | Default | Description                                             |
+| --------------- | ----- | ------- | ------------------------------------------------------- |
+| `--mailbox`     | `-m`  | `inbox` | Mailbox name or ID                                      |
+| `--unread`      | `-u`  | `false` | Only count unread messages                              |
+| `--flagged`     | `-f`  | `false` | Only count flagged messages                             |
+| `--unflagged`   |       | `false` | Only count unflagged messages                           |
+| `--limit`       | `-l`  | `10`    | Number of top senders/domains to show (minimum 1)       |
+| `--subjects`    |       | `false` | Include subject lines per sender                        |
+| `--newsletters` |       | `false` | Detect newsletters via List-Id/List-Unsubscribe headers |
+
+`--flagged` and `--unflagged` are mutually exclusive.
+
+**Usage examples:**
+
+```bash
+fm summary                                # inbox overview
+fm summary --unread                       # unread-only summary
+fm summary --unread --subjects            # with subject lines
+fm summary --newsletters                  # detect newsletters
+fm summary --mailbox archive --limit 20   # top 20 in archive
+```
+
+**JSON output:**
+
+```json
+{
+  "total": 1234,
+  "unread": 567,
+  "top_senders": [
+    {
+      "email": "newsletter@example.com",
+      "name": "Example Newsletter",
+      "count": 42
+    },
+    {
+      "email": "boss@work.com",
+      "name": "Boss Name",
+      "count": 31
+    }
+  ],
+  "top_domains": [
+    {
+      "domain": "example.com",
+      "count": 89
+    },
+    {
+      "domain": "work.com",
+      "count": 45
+    }
+  ],
+  "newsletters": [
+    {
+      "email": "newsletter@example.com",
+      "name": "Example Newsletter",
+      "count": 42
+    }
+  ]
+}
+```
+
+The `newsletters` field is omitted when `--newsletters` is not set. The `subjects` field on each sender is omitted when `--subjects` is not set.
+
+**Text output:**
+
+```text
+Total: 1234 emails (567 unread)
+
+Top senders:
+42  newsletter@example.com  Example Newsletter
+31  boss@work.com  Boss Name
+
+Top domains:
+89  example.com
+45  work.com
+
+Newsletters / mailing lists:
+42  newsletter@example.com  Example Newsletter
+```
+
+Right-aligned counts, left-aligned emails, optional display name. The newsletters section only appears when `--newsletters` is used and newsletters are detected.
+
+---
+
 ### archive
 
 Move emails to the Archive mailbox. Specify emails by ID or by filter flags.
@@ -873,6 +1048,27 @@ Top-level response from the `stats` command.
 | `total`   | number       | Total matching emails             |
 | `senders` | SenderStat[] | Sorted by count descending        |
 
+### DomainStat
+
+Aggregated count for a single sender domain, returned within `SummaryResult`.
+
+| Field    | Type   | Notes                            |
+| -------- | ------ | -------------------------------- |
+| `domain` | string | Lowercased sender domain         |
+| `count`  | number | Number of matching emails        |
+
+### SummaryResult
+
+Top-level response from the `summary` command.
+
+| Field         | Type         | Notes                                    |
+| ------------- | ------------ | ---------------------------------------- |
+| `total`       | number       | Total matching emails                    |
+| `unread`      | number       | Unread count (always populated)          |
+| `top_senders` | SenderStat[] | Sorted by count descending, limited      |
+| `top_domains` | DomainStat[] | Sorted by count descending, limited      |
+| `newsletters` | SenderStat[] | Omitted unless `--newsletters` is used   |
+
 ### EmailDetail
 
 Returned by the `read` command (without `--thread`).
@@ -968,6 +1164,21 @@ Returned by `archive`, `spam`, `mark-read`, `flag`, `unflag`, and `move` command
 | ------ | ------ | ------------ |
 | `id`   | string | Mailbox ID   |
 | `name` | string | Mailbox name |
+
+### DraftResult
+
+Returned by the `draft` command.
+
+| Field         | Type            | Notes                                           |
+| ------------- | --------------- | ----------------------------------------------- |
+| `id`          | string          | Server-assigned ID of the created draft          |
+| `mode`        | string          | One of: `new`, `reply`, `reply-all`, `forward`  |
+| `mailbox`     | DestinationInfo | The Drafts mailbox                              |
+| `from`        | Address[]       | Omitted if session username is not an email      |
+| `to`          | Address[]       | Recipients                                       |
+| `cc`          | Address[]       | Omitted if empty                                 |
+| `subject`     | string          | Final subject line                               |
+| `in_reply_to` | string          | Omitted for new/forward; message IDs for replies |
 
 ### DryRunResult
 

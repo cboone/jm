@@ -705,6 +705,247 @@ func (c *Client) AggregateEmailsBySender(opts StatsOptions) (types.StatsResult, 
 	}, nil
 }
 
+// SummaryOptions holds parameters for the inbox summary aggregation.
+type SummaryOptions struct {
+	MailboxID     string
+	UnreadOnly    bool
+	FlaggedOnly   bool
+	UnflaggedOnly bool
+	Limit         int
+	Subjects      bool
+	Newsletters   bool
+}
+
+// summaryBaseProperties are the minimal Email/get properties for summary aggregation.
+var summaryBaseProperties = []string{"id", "from", "subject", "keywords"}
+
+// AggregateSummary queries all matching emails and returns a triage summary
+// with top senders, top domains, unread count, and optional newsletter detection.
+func (c *Client) AggregateSummary(opts SummaryOptions) (types.SummaryResult, error) {
+	fc := &email.FilterCondition{
+		InMailbox: jmap.ID(opts.MailboxID),
+	}
+	if opts.UnreadOnly {
+		fc.NotKeyword = "$seen"
+	}
+	if opts.FlaggedOnly {
+		fc.HasKeyword = "$flagged"
+	}
+
+	var filter email.Filter = fc
+	if opts.UnflaggedOnly {
+		if opts.UnreadOnly {
+			filter = &email.FilterOperator{
+				Operator:   jmap.OperatorAND,
+				Conditions: []email.Filter{fc, &email.FilterCondition{NotKeyword: "$flagged"}},
+			}
+		} else {
+			fc.NotKeyword = "$flagged"
+		}
+	}
+
+	props := make([]string, len(summaryBaseProperties))
+	copy(props, summaryBaseProperties)
+	if opts.Newsletters {
+		props = append(props, "headers")
+	}
+
+	type senderAcc struct {
+		count        int
+		name         string
+		subjects     map[string]bool
+		isNewsletter bool
+	}
+	senders := make(map[string]*senderAcc)
+	domains := make(map[string]int)
+	var total uint64
+	var unread uint64
+	var position int64
+
+	for {
+		req := &jmap.Request{}
+		queryCallID := req.Invoke(&email.Query{
+			Account:        c.accountID,
+			Filter:         filter,
+			Sort:           []*email.SortComparator{{Property: "receivedAt", IsAscending: false}},
+			Position:       position,
+			Limit:          500,
+			CalculateTotal: true,
+		})
+
+		req.Invoke(&email.Get{
+			Account:    c.accountID,
+			Properties: props,
+			ReferenceIDs: &jmap.ResultReference{
+				ResultOf: queryCallID,
+				Name:     "Email/query",
+				Path:     "/ids",
+			},
+		})
+
+		resp, err := c.Do(req)
+		if err != nil {
+			return types.SummaryResult{}, fmt.Errorf("summary query: %w", err)
+		}
+
+		var pageIDs []jmap.ID
+		var emails []*email.Email
+		for _, inv := range resp.Responses {
+			switch r := inv.Args.(type) {
+			case *email.QueryResponse:
+				if position == 0 {
+					total = r.Total
+				}
+				pageIDs = r.IDs
+			case *email.GetResponse:
+				emails = r.List
+			case *jmap.MethodError:
+				return types.SummaryResult{}, fmt.Errorf("summary query: %s", r.Error())
+			}
+		}
+
+		for _, e := range emails {
+			if !e.Keywords["$seen"] {
+				unread++
+			}
+
+			if len(e.From) == 0 || e.From[0].Email == "" {
+				continue
+			}
+
+			key := strings.ToLower(e.From[0].Email)
+			acc, ok := senders[key]
+			if !ok {
+				acc = &senderAcc{subjects: make(map[string]bool)}
+				senders[key] = acc
+			}
+			acc.count++
+			if e.From[0].Name != "" && acc.name == "" {
+				acc.name = e.From[0].Name
+			}
+			if opts.Subjects && e.Subject != "" {
+				acc.subjects[e.Subject] = true
+			}
+			if opts.Newsletters && hasListHeaders(e.Headers) {
+				acc.isNewsletter = true
+			}
+
+			domain := extractDomain(e.From[0].Email)
+			if domain != "" {
+				domains[domain]++
+			}
+		}
+
+		position += int64(len(pageIDs))
+		if uint64(position) >= total || len(pageIDs) == 0 {
+			break
+		}
+	}
+
+	// Build top senders.
+	topSenders := make([]types.SenderStat, 0, len(senders))
+	for addr, acc := range senders {
+		stat := types.SenderStat{
+			Email: addr,
+			Name:  acc.name,
+			Count: acc.count,
+		}
+		if opts.Subjects && len(acc.subjects) > 0 {
+			subjects := make([]string, 0, len(acc.subjects))
+			for s := range acc.subjects {
+				subjects = append(subjects, s)
+			}
+			sort.Strings(subjects)
+			stat.Subjects = subjects
+		}
+		topSenders = append(topSenders, stat)
+	}
+	sort.Slice(topSenders, func(i, j int) bool {
+		if topSenders[i].Count != topSenders[j].Count {
+			return topSenders[i].Count > topSenders[j].Count
+		}
+		return topSenders[i].Email < topSenders[j].Email
+	})
+	if opts.Limit > 0 && len(topSenders) > opts.Limit {
+		topSenders = topSenders[:opts.Limit]
+	}
+
+	// Build top domains.
+	topDomains := make([]types.DomainStat, 0, len(domains))
+	for domain, count := range domains {
+		topDomains = append(topDomains, types.DomainStat{Domain: domain, Count: count})
+	}
+	sort.Slice(topDomains, func(i, j int) bool {
+		if topDomains[i].Count != topDomains[j].Count {
+			return topDomains[i].Count > topDomains[j].Count
+		}
+		return topDomains[i].Domain < topDomains[j].Domain
+	})
+	if opts.Limit > 0 && len(topDomains) > opts.Limit {
+		topDomains = topDomains[:opts.Limit]
+	}
+
+	result := types.SummaryResult{
+		Total:      total,
+		Unread:     unread,
+		TopSenders: topSenders,
+		TopDomains: topDomains,
+	}
+
+	// Build newsletter list if requested.
+	if opts.Newsletters {
+		var newsletters []types.SenderStat
+		for addr, acc := range senders {
+			if !acc.isNewsletter {
+				continue
+			}
+			stat := types.SenderStat{
+				Email: addr,
+				Name:  acc.name,
+				Count: acc.count,
+			}
+			if opts.Subjects && len(acc.subjects) > 0 {
+				subjects := make([]string, 0, len(acc.subjects))
+				for s := range acc.subjects {
+					subjects = append(subjects, s)
+				}
+				sort.Strings(subjects)
+				stat.Subjects = subjects
+			}
+			newsletters = append(newsletters, stat)
+		}
+		sort.Slice(newsletters, func(i, j int) bool {
+			if newsletters[i].Count != newsletters[j].Count {
+				return newsletters[i].Count > newsletters[j].Count
+			}
+			return newsletters[i].Email < newsletters[j].Email
+		})
+		result.Newsletters = newsletters
+	}
+
+	return result, nil
+}
+
+// extractDomain returns the lowercased domain part of an email address.
+func extractDomain(addr string) string {
+	at := strings.LastIndex(addr, "@")
+	if at < 0 || at == len(addr)-1 {
+		return ""
+	}
+	return strings.ToLower(addr[at+1:])
+}
+
+// hasListHeaders reports whether the email headers contain List-Id or
+// List-Unsubscribe, indicating a newsletter or mailing list.
+func hasListHeaders(headers []*email.Header) bool {
+	for _, h := range headers {
+		if strings.EqualFold(h.Name, "List-Id") || strings.EqualFold(h.Name, "List-Unsubscribe") {
+			return true
+		}
+	}
+	return false
+}
+
 // MoveEmails moves emails to a target mailbox by updating their mailboxIds.
 // It structurally cannot destroy emails or create new ones.
 func (c *Client) MoveEmails(emailIDs []string, targetMailboxID jmap.ID) ([]string, []string) {

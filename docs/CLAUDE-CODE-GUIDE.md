@@ -63,6 +63,13 @@ Add this to your project's `CLAUDE.md` to give Claude Code context about `fm`:
 - `fm search [query]` -- search by text and/or filters (flags: `--mailbox`, `--limit`, `--from`, `--to`, `--subject`, `--before`, `--after`, `--has-attachment`)
 - `fm stats` -- aggregate emails by sender (flags: `--mailbox`, `--unread`, `--flagged`, `--unflagged`, `--subjects`)
 
+**Compose commands:**
+
+- `fm draft --to <addr> --subject <subj> --body <text>` -- create a new draft
+- `fm draft --reply-to <id> --body <text>` -- reply draft
+- `fm draft --reply-all <id> --body <text>` -- reply-all draft
+- `fm draft --forward <id> --to <addr> --body <text>` -- forward draft
+
 **Triage commands (by ID or filter flags):**
 
 - `fm archive [id...] [--mailbox inbox --unread]` -- move to Archive
@@ -75,8 +82,9 @@ Add this to your project's `CLAUDE.md` to give Claude Code context about `fm`:
 ### Notes
 
 - Output is JSON by default; errors are JSON on stderr with exit code 1
-- Email IDs from `list` and `search` chain directly into `read`, `archive`, `spam`, `mark-read`, `flag`, `unflag`, and `move`
+- Email IDs from `list` and `search` chain directly into `read`, `archive`, `spam`, `mark-read`, `flag`, `unflag`, `move`, and `draft`
 - Triage commands accept email IDs or filter flags (not both): `fm archive M1 M2` or `fm archive --mailbox inbox --unread`
+- The `draft` command creates drafts in the Drafts mailbox; it does not send email
 - Sending and deleting email are structurally disallowed
 - Date filters accept RFC 3339 (e.g., `2026-01-15T00:00:00Z`) or bare dates (e.g., `2026-01-15`)
 - The `move` command's `--to` flag is the destination, not a recipient filter
@@ -169,6 +177,27 @@ fm move --mailbox inbox --subject receipt --to Receipts
 fm search --has-attachment --after 2026-01-01T00:00:00Z --before 2026-02-01T00:00:00Z
 ```
 
+### Draft Composition
+
+**Prompt:** "Read the email from alice and draft a reply thanking her"
+
+```bash
+# Find alice's latest email
+fm search --from alice --limit 1
+
+# Read it
+fm read <email-id>
+
+# Create a reply draft (saved in Drafts, not sent)
+fm draft --reply-to <email-id> --body "Thanks, Alice! I'll review the document and follow up."
+```
+
+**Prompt:** "Forward the receipt email to my accountant"
+
+```bash
+fm draft --forward <email-id> --to accountant@example.com --body "Please file this receipt."
+```
+
 ### Sender Triage
 
 **Prompt:** "Show me who's sending the most unread email and help me triage"
@@ -224,6 +253,6 @@ For the full error code list and schema details, see [CLI Reference: Error Refer
 ## Limitations
 
 - **Attachment metadata only:** Attachment names, types, and sizes are included in email output, but downloading attachment content is not supported.
-- **No sending:** There is no command for composing or sending email.
+- **No sending:** There is no command for sending email. `draft` creates drafts for review in Fastmail; the user must send manually.
 - **No deleting:** There is no command for deleting email. The `move` command refuses Trash, Deleted Items, and Deleted Messages as targets.
 - **No session caching:** Each command makes a session request to the JMAP server (~100-300ms overhead). This is negligible relative to LLM API call latency.
