@@ -1554,7 +1554,12 @@ func TestListEmails_FlaggedOnly(t *testing.T) {
 		mailboxCache: []*mailbox.Mailbox{{ID: "mb-inbox", Name: "Inbox", Role: mailbox.RoleInbox}},
 	}
 
-	_, err := c.ListEmails("inbox", 25, 0, false, true, false, "receivedAt", false)
+	_, err := c.ListEmails(ListOptions{
+		MailboxNameOrID: "inbox",
+		Limit:           25,
+		FlaggedOnly:     true,
+		SortField:       "receivedAt",
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1591,7 +1596,12 @@ func TestListEmails_UnflaggedOnly(t *testing.T) {
 		mailboxCache: []*mailbox.Mailbox{{ID: "mb-inbox", Name: "Inbox", Role: mailbox.RoleInbox}},
 	}
 
-	_, err := c.ListEmails("inbox", 25, 0, false, false, true, "receivedAt", false)
+	_, err := c.ListEmails(ListOptions{
+		MailboxNameOrID: "inbox",
+		Limit:           25,
+		UnflaggedOnly:   true,
+		SortField:       "receivedAt",
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1626,7 +1636,13 @@ func TestListEmails_UnflaggedAndUnread(t *testing.T) {
 		mailboxCache: []*mailbox.Mailbox{{ID: "mb-inbox", Name: "Inbox", Role: mailbox.RoleInbox}},
 	}
 
-	_, err := c.ListEmails("inbox", 25, 0, true, false, true, "receivedAt", false)
+	_, err := c.ListEmails(ListOptions{
+		MailboxNameOrID: "inbox",
+		Limit:           25,
+		UnreadOnly:      true,
+		UnflaggedOnly:   true,
+		SortField:       "receivedAt",
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

@@ -98,9 +98,21 @@ var detailProperties = []string{
 	"bodyValues", "textBody", "htmlBody", "attachments", "headers",
 }
 
+// ListOptions holds parameters for listing emails in a mailbox.
+type ListOptions struct {
+	MailboxNameOrID string
+	Limit           uint64
+	Offset          int64
+	UnreadOnly      bool
+	FlaggedOnly     bool
+	UnflaggedOnly   bool
+	SortField       string
+	SortAsc         bool
+}
+
 // ListEmails queries emails in a mailbox and returns summaries.
-func (c *Client) ListEmails(mailboxNameOrID string, limit uint64, offset int64, unreadOnly bool, flaggedOnly bool, unflaggedOnly bool, sortField string, sortAsc bool) (types.EmailListResult, error) {
-	mailboxID, err := c.ResolveMailboxID(mailboxNameOrID)
+func (c *Client) ListEmails(opts ListOptions) (types.EmailListResult, error) {
+	mailboxID, err := c.ResolveMailboxID(opts.MailboxNameOrID)
 	if err != nil {
 		return types.EmailListResult{}, err
 	}
@@ -108,20 +120,20 @@ func (c *Client) ListEmails(mailboxNameOrID string, limit uint64, offset int64, 
 	fc := &email.FilterCondition{
 		InMailbox: mailboxID,
 	}
-	if unreadOnly {
+	if opts.UnreadOnly {
 		fc.NotKeyword = "$seen"
 	}
-	if flaggedOnly {
+	if opts.FlaggedOnly {
 		fc.HasKeyword = "$flagged"
 	}
 
-	// Build the final filter. When both unflaggedOnly and unreadOnly are set,
+	// Build the final filter. When both UnflaggedOnly and UnreadOnly are set,
 	// they each need a separate NotKeyword field, so we must use a compound
 	// FilterOperator with AND. InMailbox stays on the first FilterCondition
 	// inside the operator so the mailbox scope is preserved.
 	var filter email.Filter = fc
-	if unflaggedOnly {
-		if unreadOnly {
+	if opts.UnflaggedOnly {
+		if opts.UnreadOnly {
 			filter = &email.FilterOperator{
 				Operator:   jmap.OperatorAND,
 				Conditions: []email.Filter{fc, &email.FilterCondition{NotKeyword: "$flagged"}},
@@ -135,9 +147,9 @@ func (c *Client) ListEmails(mailboxNameOrID string, limit uint64, offset int64, 
 	queryCallID := req.Invoke(&email.Query{
 		Account:        c.accountID,
 		Filter:         filter,
-		Sort:           []*email.SortComparator{{Property: sortField, IsAscending: sortAsc}},
-		Position:       offset,
-		Limit:          limit,
+		Sort:           []*email.SortComparator{{Property: opts.SortField, IsAscending: opts.SortAsc}},
+		Position:       opts.Offset,
+		Limit:          opts.Limit,
 		CalculateTotal: true,
 	})
 
@@ -156,7 +168,7 @@ func (c *Client) ListEmails(mailboxNameOrID string, limit uint64, offset int64, 
 		return types.EmailListResult{}, fmt.Errorf("email query: %w", err)
 	}
 
-	result := types.EmailListResult{Offset: offset}
+	result := types.EmailListResult{Offset: opts.Offset}
 	for _, inv := range resp.Responses {
 		switch r := inv.Args.(type) {
 		case *email.QueryResponse:
