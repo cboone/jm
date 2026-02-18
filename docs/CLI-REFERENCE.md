@@ -445,6 +445,88 @@ Right-aligned counts, left-aligned emails, optional display name, indented subje
 
 ---
 
+### draft
+
+Create a draft email in the Drafts mailbox. Supports four composition modes: new, reply, reply-all, and forward. The draft is saved with `$draft` and `$seen` keywords and is **not sent**.
+
+```bash
+fm draft --to alice@example.com --subject "Hello" --body "Hi Alice"
+fm draft --reply-to <email-id> --body "Thanks!"
+fm draft --reply-all <email-id> --body "Noted, thanks."
+fm draft --forward <email-id> --to bob@example.com --body "FYI"
+echo "Body text" | fm draft --to alice@example.com --subject "Test" --body-stdin
+```
+
+No positional arguments.
+
+| Flag           | Default | Description                                          |
+| -------------- | ------- | ---------------------------------------------------- |
+| `--to`         | (none)  | Recipient addresses (RFC 5322); required for new/fwd |
+| `--cc`         | (none)  | CC addresses (RFC 5322)                              |
+| `--bcc`        | (none)  | BCC addresses (RFC 5322)                             |
+| `--subject`    | (none)  | Subject line; required for new                       |
+| `--body`       | (none)  | Message body (mutually exclusive with `--body-stdin`) |
+| `--body-stdin` | `false` | Read body from stdin                                 |
+| `--reply-to`   | (none)  | Email ID to reply to                                 |
+| `--reply-all`  | (none)  | Email ID to reply-all to                             |
+| `--forward`    | (none)  | Email ID to forward                                  |
+| `--html`       | `false` | Treat body as HTML                                   |
+
+**Mode determination:** If none of `--reply-to`, `--reply-all`, or `--forward` is set, mode is "new". Exactly one mode flag may be provided; they are mutually exclusive.
+
+**Validation rules:**
+- New mode requires `--to` and `--subject`
+- Forward mode requires `--to`
+- Reply/reply-all derive `--to` and `--subject` from the original email
+- Exactly one of `--body` or `--body-stdin` must be provided
+
+**Address format:** RFC 5322 format is supported: `"Name <email>"` or bare `email@example.com`.
+
+**Reply behavior:**
+- To: original `Reply-To` header (or `From` if absent); user `--to` appended
+- Subject: prepends `Re:` if not already present (overridable with `--subject`)
+- Threading: sets `In-Reply-To` and `References` from the original message
+
+**Reply-all behavior:**
+- Same as reply, plus CC: original `To` + `CC` minus self, minus anyone already in `To`; user `--cc` appended
+
+**Forward behavior:**
+- Subject: prepends `Fwd:` if not already present (overridable with `--subject`)
+- Body: user body followed by separator and quoted original body
+- No threading headers set
+
+**JSON output:**
+
+```json
+{
+  "id": "M-new-draft-id",
+  "mode": "reply",
+  "mailbox": {
+    "id": "mb-drafts-id",
+    "name": "Drafts"
+  },
+  "from": [{ "name": "", "email": "user@fastmail.com" }],
+  "to": [{ "name": "Alice", "email": "alice@example.com" }],
+  "cc": [],
+  "subject": "Re: Meeting tomorrow",
+  "in_reply_to": "<CAExample1234@example.com>"
+}
+```
+
+**Text output:**
+
+```text
+Draft created: M-new-draft-id
+Mode: reply
+From: user@fastmail.com
+To: Alice <alice@example.com>
+Subject: Re: Meeting tomorrow
+Mailbox: Drafts (mb-drafts-id)
+In-Reply-To: <CAExample1234@example.com>
+```
+
+---
+
 ### summary
 
 Show an inbox triage summary with sender aggregation, domain aggregation, unread count, and optional newsletter detection. Provides a single-pass overview of a mailbox for cleanup sessions.
@@ -1082,6 +1164,21 @@ Returned by `archive`, `spam`, `mark-read`, `flag`, `unflag`, and `move` command
 | ------ | ------ | ------------ |
 | `id`   | string | Mailbox ID   |
 | `name` | string | Mailbox name |
+
+### DraftResult
+
+Returned by the `draft` command.
+
+| Field         | Type            | Notes                                           |
+| ------------- | --------------- | ----------------------------------------------- |
+| `id`          | string          | Server-assigned ID of the created draft          |
+| `mode`        | string          | One of: `new`, `reply`, `reply-all`, `forward`  |
+| `mailbox`     | DestinationInfo | The Drafts mailbox                              |
+| `from`        | Address[]       | Omitted if session username is not an email      |
+| `to`          | Address[]       | Recipients                                       |
+| `cc`          | Address[]       | Omitted if empty                                 |
+| `subject`     | string          | Final subject line                               |
+| `in_reply_to` | string          | Omitted for new/forward; message IDs for replies |
 
 ### DryRunResult
 

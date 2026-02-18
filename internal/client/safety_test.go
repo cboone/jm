@@ -3,6 +3,8 @@ package client
 import (
 	"testing"
 
+	"git.sr.ht/~rockorager/go-jmap"
+	"git.sr.ht/~rockorager/go-jmap/mail/email"
 	"git.sr.ht/~rockorager/go-jmap/mail/mailbox"
 )
 
@@ -76,5 +78,140 @@ func TestErrForbidden_ImplementsError(t *testing.T) {
 	var err error = &ErrForbidden{Operation: "test", Reason: "test"}
 	if err.Error() == "" {
 		t.Error("expected non-empty error message")
+	}
+}
+
+// --- ValidateSetForDraft tests ---
+
+func validDraftSet(draftsID jmap.ID) *email.Set {
+	return &email.Set{
+		Create: map[jmap.ID]*email.Email{
+			"draft-0": {
+				MailboxIDs: map[jmap.ID]bool{draftsID: true},
+				Keywords:   map[string]bool{"$draft": true, "$seen": true},
+			},
+		},
+	}
+}
+
+func TestValidateSetForDraft_Valid(t *testing.T) {
+	draftsID := jmap.ID("mb-drafts")
+	if err := ValidateSetForDraft(validDraftSet(draftsID), draftsID); err != nil {
+		t.Errorf("expected valid draft to pass, got: %v", err)
+	}
+}
+
+func TestValidateSetForDraft_RejectDestroy(t *testing.T) {
+	draftsID := jmap.ID("mb-drafts")
+	set := validDraftSet(draftsID)
+	set.Destroy = []jmap.ID{"some-id"}
+
+	err := ValidateSetForDraft(set, draftsID)
+	if err == nil {
+		t.Fatal("expected error for non-empty Destroy")
+	}
+	if fe, ok := err.(*ErrForbidden); !ok || fe.Operation != "draft" {
+		t.Errorf("expected ErrForbidden with operation=draft, got: %v", err)
+	}
+}
+
+func TestValidateSetForDraft_RejectUpdate(t *testing.T) {
+	draftsID := jmap.ID("mb-drafts")
+	set := validDraftSet(draftsID)
+	set.Update = map[jmap.ID]jmap.Patch{"some-id": {"keywords/$seen": true}}
+
+	err := ValidateSetForDraft(set, draftsID)
+	if err == nil {
+		t.Fatal("expected error for non-empty Update")
+	}
+	if fe, ok := err.(*ErrForbidden); !ok || fe.Operation != "draft" {
+		t.Errorf("expected ErrForbidden with operation=draft, got: %v", err)
+	}
+}
+
+func TestValidateSetForDraft_RejectEmptyCreate(t *testing.T) {
+	draftsID := jmap.ID("mb-drafts")
+	set := &email.Set{
+		Create: map[jmap.ID]*email.Email{},
+	}
+
+	err := ValidateSetForDraft(set, draftsID)
+	if err == nil {
+		t.Fatal("expected error for empty Create")
+	}
+}
+
+func TestValidateSetForDraft_RejectMultipleCreate(t *testing.T) {
+	draftsID := jmap.ID("mb-drafts")
+	set := &email.Set{
+		Create: map[jmap.ID]*email.Email{
+			"draft-0": {
+				MailboxIDs: map[jmap.ID]bool{draftsID: true},
+				Keywords:   map[string]bool{"$draft": true},
+			},
+			"draft-1": {
+				MailboxIDs: map[jmap.ID]bool{draftsID: true},
+				Keywords:   map[string]bool{"$draft": true},
+			},
+		},
+	}
+
+	err := ValidateSetForDraft(set, draftsID)
+	if err == nil {
+		t.Fatal("expected error for multiple Create entries")
+	}
+}
+
+func TestValidateSetForDraft_RejectWrongMailbox(t *testing.T) {
+	draftsID := jmap.ID("mb-drafts")
+	set := &email.Set{
+		Create: map[jmap.ID]*email.Email{
+			"draft-0": {
+				MailboxIDs: map[jmap.ID]bool{jmap.ID("mb-inbox"): true},
+				Keywords:   map[string]bool{"$draft": true},
+			},
+		},
+	}
+
+	err := ValidateSetForDraft(set, draftsID)
+	if err == nil {
+		t.Fatal("expected error for wrong mailbox")
+	}
+	if fe, ok := err.(*ErrForbidden); !ok || fe.Operation != "draft" {
+		t.Errorf("expected ErrForbidden with operation=draft, got: %v", err)
+	}
+}
+
+func TestValidateSetForDraft_RejectMultipleMailboxes(t *testing.T) {
+	draftsID := jmap.ID("mb-drafts")
+	set := &email.Set{
+		Create: map[jmap.ID]*email.Email{
+			"draft-0": {
+				MailboxIDs: map[jmap.ID]bool{draftsID: true, jmap.ID("mb-inbox"): true},
+				Keywords:   map[string]bool{"$draft": true},
+			},
+		},
+	}
+
+	err := ValidateSetForDraft(set, draftsID)
+	if err == nil {
+		t.Fatal("expected error for multiple mailboxes")
+	}
+}
+
+func TestValidateSetForDraft_RejectMissingDraftKeyword(t *testing.T) {
+	draftsID := jmap.ID("mb-drafts")
+	set := &email.Set{
+		Create: map[jmap.ID]*email.Email{
+			"draft-0": {
+				MailboxIDs: map[jmap.ID]bool{draftsID: true},
+				Keywords:   map[string]bool{"$seen": true},
+			},
+		},
+	}
+
+	err := ValidateSetForDraft(set, draftsID)
+	if err == nil {
+		t.Fatal("expected error for missing $draft keyword")
 	}
 }

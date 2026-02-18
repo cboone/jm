@@ -17,11 +17,14 @@ Claude Code on the command line to read, search, and triage email.
 
 These are **never** implemented, not behind a flag, not behind confirmation:
 
-- **Sending email** -- No `EmailSubmission` calls, no `Email/set` with creation of
-  outbound messages
+- **Sending email** -- No `EmailSubmission` calls
 - **Deleting email** -- No `Email/set` with `destroy`, no moving to Trash
 - **Purging / expunging** -- No mailbox deletion, no bulk destroy
 - The `move` command will **refuse** to target Trash, Deleted Items, or Deleted Messages
+
+**Draft creation** uses `Email/set` with `Create`, but is constrained by
+`ValidateSetForDraft`: only one email may be created per call, it must target only
+the Drafts mailbox, and it must carry the `$draft` keyword. This does not send email.
 
 ---
 
@@ -408,7 +411,7 @@ internal representations.
 
 ## Safety Implementation (`internal/client/safety.go`)
 
-Safety is enforced through two complementary mechanisms:
+Safety is enforced through complementary mechanisms:
 
 **1. Structural omission** -- `MoveEmails` and `MarkAsSpam` in `email.go` only
 populate the `Update` field of `Email/set`. The `Destroy` and `Create` fields are
@@ -422,6 +425,16 @@ func ValidateTargetMailbox(mb *mailbox.Mailbox) error // rejects trash-role targ
 ```
 
 The `move` command calls `ValidateTargetMailbox` before issuing `Email/set`.
+
+**3. Draft validation** -- `ValidateSetForDraft` in `safety.go` constrains
+`Email/set Create` to exactly one draft in the Drafts mailbox with the `$draft`
+keyword. This allows draft creation while preventing creation of non-draft emails.
+
+```go
+func ValidateSetForDraft(set *email.Set, draftsMailboxID jmap.ID) error
+```
+
+The `draft` command calls `ValidateSetForDraft` before executing `Email/set`.
 
 ---
 
