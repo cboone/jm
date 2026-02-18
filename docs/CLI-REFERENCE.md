@@ -383,7 +383,7 @@ The `snippet` field contains HTML `<mark>` tags highlighting matched terms. It i
 Move emails to the Archive mailbox. Specify emails by ID or by filter flags.
 
 ```bash
-fm archive <email-id> [email-id...]
+fm archive [email-id...]
 fm archive --mailbox inbox --unread
 fm archive --mailbox inbox --from notifications@github.com
 ```
@@ -439,7 +439,7 @@ If some emails fail, the successful ones are still listed and errors appear in t
 Move emails to the Junk/Spam mailbox. Specify emails by ID or by filter flags.
 
 ```bash
-fm spam <email-id> [email-id...]
+fm spam [email-id...]
 fm spam --mailbox inbox --from spammer@example.com
 ```
 
@@ -494,7 +494,7 @@ If some emails fail, the successful ones are still listed and errors appear in t
 Mark emails as read by setting the `$seen` keyword. Specify emails by ID or by filter flags.
 
 ```bash
-fm mark-read <email-id> [email-id...]
+fm mark-read [email-id...]
 fm mark-read --mailbox inbox --unread
 fm mark-read --mailbox inbox --from notifications@github.com --unread
 ```
@@ -545,8 +545,8 @@ If some emails fail, the successful ones are still listed and errors appear in t
 Flag emails by setting the `$flagged` keyword. Optionally set a flag color. Specify emails by ID or by filter flags.
 
 ```bash
-fm flag <email-id> [email-id...]
-fm flag --color orange <email-id> [email-id...]
+fm flag [email-id...]
+fm flag --color orange [email-id...]
 fm flag --mailbox inbox --from boss@company.com --unread
 ```
 
@@ -607,7 +607,7 @@ If some emails fail, the successful ones are still listed and errors appear in t
 Unflag emails by removing the `$flagged` keyword and clearing all color bits. With `--color`, only the color bits are removed (the email stays flagged). Specify emails by ID or by filter flags.
 
 ```bash
-fm unflag <email-id> [email-id...]
+fm unflag [email-id...]
 fm unflag --color <email-id> [email-id...]
 fm unflag --mailbox inbox --flagged --before 2025-01-01
 ```
@@ -668,7 +668,7 @@ If some emails fail, the successful ones are still listed and errors appear in t
 Move emails to a specified mailbox by name or ID. Specify emails by ID or by filter flags.
 
 ```bash
-fm move <email-id> [email-id...] --to <mailbox>
+fm move [email-id...] --to <mailbox>
 fm move --mailbox inbox --from notifications@github.com --to Archive
 ```
 

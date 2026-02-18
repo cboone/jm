@@ -190,13 +190,18 @@ func writeJSON(w http.ResponseWriter, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
-// resetCommandFlags resets the Changed state and value for all flags on a
-// command and its subcommands so that consecutive test runs don't leak flag state.
+// resetCommandFlags resets the Changed state and value for all flags
+// (local and persistent) on a command and its subcommands so that
+// consecutive test runs don't leak flag state.
 func resetCommandFlags(cmd *cobra.Command) {
-	cmd.Flags().VisitAll(func(f *pflag.Flag) {
-		f.Changed = false
-		_ = f.Value.Set(f.DefValue)
-	})
+	resetFlagSet := func(fs *pflag.FlagSet) {
+		fs.VisitAll(func(f *pflag.Flag) {
+			f.Changed = false
+			_ = f.Value.Set(f.DefValue)
+		})
+	}
+	resetFlagSet(cmd.Flags())
+	resetFlagSet(cmd.PersistentFlags())
 	for _, sub := range cmd.Commands() {
 		resetCommandFlags(sub)
 	}
