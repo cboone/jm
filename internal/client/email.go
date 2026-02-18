@@ -112,6 +112,13 @@ type ListOptions struct {
 
 // ListEmails queries emails in a mailbox and returns summaries.
 func (c *Client) ListEmails(opts ListOptions) (types.EmailListResult, error) {
+	if opts.SortField == "" {
+		opts.SortField = "receivedAt"
+	}
+	if opts.Limit == 0 {
+		opts.Limit = 25
+	}
+
 	mailboxID, err := c.ResolveMailboxID(opts.MailboxNameOrID)
 	if err != nil {
 		return types.EmailListResult{}, err

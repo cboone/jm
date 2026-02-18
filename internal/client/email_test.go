@@ -1538,6 +1538,45 @@ func TestSearchEmails_UnflaggedAndUnread_SnippetFilter(t *testing.T) {
 	}
 }
 
+// TestListEmails_Defaults verifies defaults are applied when options are omitted.
+func TestListEmails_Defaults(t *testing.T) {
+	var captured *jmap.Request
+
+	c := &Client{
+		accountID: "test-account",
+		doFunc: func(req *jmap.Request) (*jmap.Response, error) {
+			captured = req
+			return &jmap.Response{Responses: []*jmap.Invocation{
+				{Name: "Email/query", CallID: "0", Args: &email.QueryResponse{Total: 0, IDs: []jmap.ID{}}},
+				{Name: "Email/get", CallID: "1", Args: &email.GetResponse{List: []*email.Email{}}},
+			}}, nil
+		},
+		mailboxCache: []*mailbox.Mailbox{{ID: "mb-inbox", Name: "Inbox", Role: mailbox.RoleInbox}},
+	}
+
+	_, err := c.ListEmails(ListOptions{MailboxNameOrID: "inbox"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	query, ok := captured.Calls[0].Args.(*email.Query)
+	if !ok {
+		t.Fatalf("expected *email.Query, got %T", captured.Calls[0].Args)
+	}
+	if query.Limit != 25 {
+		t.Errorf("expected default limit 25, got %d", query.Limit)
+	}
+	if len(query.Sort) != 1 {
+		t.Fatalf("expected one sort comparator, got %d", len(query.Sort))
+	}
+	if query.Sort[0].Property != "receivedAt" {
+		t.Errorf("expected default sort field receivedAt, got %q", query.Sort[0].Property)
+	}
+	if query.Sort[0].IsAscending {
+		t.Error("expected default sort direction descending")
+	}
+}
+
 // TestListEmails_FlaggedOnly verifies that flaggedOnly sets HasKeyword on the filter.
 func TestListEmails_FlaggedOnly(t *testing.T) {
 	var captured *jmap.Request
