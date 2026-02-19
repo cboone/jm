@@ -370,6 +370,14 @@ func TestDeleteSieveScript(t *testing.T) {
 		return &jmap.Response{
 			Responses: []*jmap.Invocation{
 				{
+					Name: "SieveScript/get",
+					Args: &sieve.GetResponse{
+						List: []*sieve.SieveScript{
+							{ID: "S1", Name: "my-filter"},
+						},
+					},
+				},
+				{
 					Name: "SieveScript/set",
 					Args: &sieve.SetResponse{
 						Destroyed: []jmap.ID{"S1"},
@@ -386,6 +394,9 @@ func TestDeleteSieveScript(t *testing.T) {
 	if result.ID != "S1" {
 		t.Errorf("DeleteSieveScript() ID = %q, want %q", result.ID, "S1")
 	}
+	if result.Name != "my-filter" {
+		t.Errorf("DeleteSieveScript() Name = %q, want %q", result.Name, "my-filter")
+	}
 }
 
 func TestDeleteSieveScript_ActiveScript(t *testing.T) {
@@ -393,6 +404,14 @@ func TestDeleteSieveScript_ActiveScript(t *testing.T) {
 	c := sieveTestClient(func(req *jmap.Request) (*jmap.Response, error) {
 		return &jmap.Response{
 			Responses: []*jmap.Invocation{
+				{
+					Name: "SieveScript/get",
+					Args: &sieve.GetResponse{
+						List: []*sieve.SieveScript{
+							{ID: "S1", Name: "my-filter"},
+						},
+					},
+				},
 				{
 					Name: "SieveScript/set",
 					Args: &sieve.SetResponse{

@@ -303,24 +303,31 @@ func (c *Client) DeleteSieveScript(id string) (types.SieveDeleteResult, error) {
 		return types.SieveDeleteResult{}, err
 	}
 
-	set := &sieve.Set{
+	req := &jmap.Request{}
+	req.Invoke(&sieve.Get{
+		Account: c.accountID,
+		IDs:     []jmap.ID{jmap.ID(id)},
+	})
+	req.Invoke(&sieve.Set{
 		Account: c.accountID,
 		Destroy: []jmap.ID{jmap.ID(id)},
-	}
-
-	req := &jmap.Request{}
-	req.Invoke(set)
+	})
 
 	resp, err := c.Do(req)
 	if err != nil {
 		return types.SieveDeleteResult{}, fmt.Errorf("deleting sieve script: %w", err)
 	}
 
+	var name string
 	for _, inv := range resp.Responses {
 		switch r := inv.Args.(type) {
+		case *sieve.GetResponse:
+			if len(r.List) > 0 {
+				name = r.List[0].Name
+			}
 		case *sieve.SetResponse:
 			if len(r.Destroyed) > 0 {
-				return types.SieveDeleteResult{ID: id}, nil
+				return types.SieveDeleteResult{ID: id, Name: name}, nil
 			}
 			if setErr, ok := r.NotDestroyed[jmap.ID(id)]; ok {
 				desc := "unknown error"
