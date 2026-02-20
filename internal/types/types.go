@@ -175,6 +175,65 @@ type DraftResult struct {
 	InReplyTo string           `json:"in_reply_to,omitempty"`
 }
 
+// SieveScriptInfo is a summary view of a sieve script for list output.
+type SieveScriptInfo struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	IsActive bool   `json:"is_active"`
+}
+
+// SieveScriptListResult wraps a list of sieve scripts.
+type SieveScriptListResult struct {
+	Total   int               `json:"total"`
+	Scripts []SieveScriptInfo `json:"scripts"`
+}
+
+// SieveScriptDetail is a full view of a sieve script including content.
+type SieveScriptDetail struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	BlobID   string `json:"blob_id"`
+	IsActive bool   `json:"is_active"`
+	Content  string `json:"content"`
+}
+
+// SieveCreateResult reports the outcome of sieve script creation.
+type SieveCreateResult struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	BlobID   string `json:"blob_id"`
+	IsActive bool   `json:"is_active"`
+	Content  string `json:"content"`
+}
+
+// SieveDeleteResult reports the outcome of sieve script deletion.
+type SieveDeleteResult struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// SieveActivateResult reports the outcome of activation or deactivation.
+type SieveActivateResult struct {
+	ID       string `json:"id,omitempty"`
+	Name     string `json:"name,omitempty"`
+	IsActive bool   `json:"is_active"`
+}
+
+// SieveValidateResult reports the outcome of script validation.
+type SieveValidateResult struct {
+	Valid   bool   `json:"valid"`
+	Error   string `json:"error,omitempty"`
+	Content string `json:"content"`
+}
+
+// SieveDryRunResult previews a sieve mutation without executing it.
+type SieveDryRunResult struct {
+	Operation string `json:"operation"`
+	Script    string `json:"script,omitempty"`
+	Content   string `json:"content,omitempty"`
+	Valid     *bool  `json:"valid,omitempty"`
+}
+
 // AppError is a structured error for JSON output.
 type AppError struct {
 	Error   string `json:"error"`

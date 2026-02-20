@@ -28,6 +28,8 @@ type Client struct {
 	accountID    jmap.ID
 	mailboxCache []*mailbox.Mailbox
 	doFunc       func(*jmap.Request) (*jmap.Response, error)
+	uploadFunc   func(jmap.ID, io.Reader) (*jmap.UploadResponse, error)
+	downloadFunc func(jmap.ID, jmap.ID) (io.ReadCloser, error)
 }
 
 // New creates a Client, authenticates, and discovers the session.
@@ -78,6 +80,22 @@ func (c *Client) Do(req *jmap.Request) (*jmap.Response, error) {
 		return c.doFunc(req)
 	}
 	return c.jmap.Do(req)
+}
+
+// Upload sends binary data to the server and returns the blob metadata.
+func (c *Client) Upload(accountID jmap.ID, blob io.Reader) (*jmap.UploadResponse, error) {
+	if c.uploadFunc != nil {
+		return c.uploadFunc(accountID, blob)
+	}
+	return c.jmap.Upload(accountID, blob)
+}
+
+// Download fetches binary data by blob ID from the server.
+func (c *Client) Download(accountID jmap.ID, blobID jmap.ID) (io.ReadCloser, error) {
+	if c.downloadFunc != nil {
+		return c.downloadFunc(accountID, blobID)
+	}
+	return c.jmap.Download(accountID, blobID)
 }
 
 // maxBatchSize returns the server's MaxObjectsInSet from the JMAP session

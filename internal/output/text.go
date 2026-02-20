@@ -43,6 +43,20 @@ func (f *TextFormatter) Format(w io.Writer, v any) error {
 		return f.formatDryRunResult(w, val)
 	case types.DraftResult:
 		return f.formatDraftResult(w, val)
+	case types.SieveScriptListResult:
+		return f.formatSieveScriptList(w, val)
+	case types.SieveScriptDetail:
+		return f.formatSieveScriptDetail(w, val)
+	case types.SieveCreateResult:
+		return f.formatSieveCreateResult(w, val)
+	case types.SieveDeleteResult:
+		return f.formatSieveDeleteResult(w, val)
+	case types.SieveActivateResult:
+		return f.formatSieveActivateResult(w, val)
+	case types.SieveValidateResult:
+		return f.formatSieveValidateResult(w, val)
+	case types.SieveDryRunResult:
+		return f.formatSieveDryRunResult(w, val)
 	default:
 		// Fall back to JSON formatter for unknown types.
 		return (&JSONFormatter{}).Format(w, v)
@@ -405,6 +419,97 @@ func formatAddrs(addrs []types.Address) string {
 		parts[i] = formatAddr(a)
 	}
 	return strings.Join(parts, ", ")
+}
+
+func (f *TextFormatter) formatSieveScriptList(w io.Writer, r types.SieveScriptListResult) error {
+	fmt.Fprintf(w, "Total: %d script(s)\n", r.Total)
+	if r.Total == 0 {
+		return nil
+	}
+
+	fmt.Fprintln(w)
+	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	fmt.Fprintf(tw, "ID\tName\tActive\n")
+	for _, s := range r.Scripts {
+		active := ""
+		if s.IsActive {
+			active = "*"
+		}
+		fmt.Fprintf(tw, "%s\t%s\t%s\n", s.ID, s.Name, active)
+	}
+	return tw.Flush()
+}
+
+func (f *TextFormatter) formatSieveScriptDetail(w io.Writer, s types.SieveScriptDetail) error {
+	active := "no"
+	if s.IsActive {
+		active = "yes"
+	}
+	fmt.Fprintf(w, "ID: %s\n", s.ID)
+	fmt.Fprintf(w, "Name: %s\n", s.Name)
+	fmt.Fprintf(w, "Active: %s\n", active)
+	fmt.Fprintf(w, "Blob: %s\n", s.BlobID)
+	fmt.Fprintln(w, strings.Repeat("-", 72))
+	fmt.Fprint(w, s.Content)
+	return nil
+}
+
+func (f *TextFormatter) formatSieveCreateResult(w io.Writer, r types.SieveCreateResult) error {
+	active := "no"
+	if r.IsActive {
+		active = "yes"
+	}
+	fmt.Fprintf(w, "Created sieve script: %s\n", r.ID)
+	fmt.Fprintf(w, "Name: %s\n", r.Name)
+	fmt.Fprintf(w, "Active: %s\n", active)
+	return nil
+}
+
+func (f *TextFormatter) formatSieveDeleteResult(w io.Writer, r types.SieveDeleteResult) error {
+	fmt.Fprintf(w, "Deleted sieve script: %s\n", r.ID)
+	return nil
+}
+
+func (f *TextFormatter) formatSieveActivateResult(w io.Writer, r types.SieveActivateResult) error {
+	if r.IsActive {
+		fmt.Fprintf(w, "Activated sieve script: %s\n", r.ID)
+	} else {
+		fmt.Fprintln(w, "Deactivated active sieve script")
+	}
+	return nil
+}
+
+func (f *TextFormatter) formatSieveValidateResult(w io.Writer, r types.SieveValidateResult) error {
+	if r.Valid {
+		fmt.Fprintln(w, "Valid: yes")
+	} else {
+		fmt.Fprintln(w, "Valid: no")
+		fmt.Fprintf(w, "Error: %s\n", r.Error)
+	}
+	return nil
+}
+
+func (f *TextFormatter) formatSieveDryRunResult(w io.Writer, r types.SieveDryRunResult) error {
+	fmt.Fprintf(w, "Dry run: would %s", r.Operation)
+	if r.Script != "" {
+		fmt.Fprintf(w, " script %q", r.Script)
+	}
+	fmt.Fprintln(w)
+
+	if r.Content != "" {
+		fmt.Fprintln(w, strings.Repeat("-", 72))
+		fmt.Fprint(w, r.Content)
+	}
+
+	if r.Valid != nil {
+		if *r.Valid {
+			fmt.Fprintln(w, "\nValidation: passed")
+		} else {
+			fmt.Fprintln(w, "\nValidation: failed")
+		}
+	}
+
+	return nil
 }
 
 // truncate shortens s to maxWidth display columns, replacing the end with
